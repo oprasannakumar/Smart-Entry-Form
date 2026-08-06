@@ -20,6 +20,7 @@
       --secondary: #3b82f6;
       --danger: #f87171;
       --purple: #8b5cf6;
+      --self-transfer: #eab308; /* Yellow/Amber hue for self transfers */
       --bg-body: linear-gradient(135deg,#eef2f7,#f9fafb);
       --bg-card: #ffffff;
       --text-main: #1f2937;
@@ -34,6 +35,7 @@
       --text-label: #94a3b8;
       --border-color: #334155;
       --bg-input: #1e293b;
+      --self-transfer: #facc15;
     }
     body {
       font-family:'Inter', sans-serif;
@@ -570,6 +572,35 @@
     .edit-compare-grid .diff-heading::before, .edit-compare-grid .diff-heading::after { content:''; flex:1; border-bottom:1px dashed var(--border-color); }
     .edit-compare-grid .diff-heading::before { margin-right:15px; }
     .edit-compare-grid .diff-heading::after { margin-left:15px; }
+
+    /* LOADER & EMPTY STATE ANIMATIONS */
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border-color);
+      border-top: 3px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 20px auto;
+    }
+    .empty-state {
+      text-align: center;
+      color: var(--text-label);
+      padding: 25px 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .empty-icon {
+      font-size: 32px;
+      animation: bounce 1.5s infinite ease-in-out;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
   </style>
 </head>
 <body>
@@ -592,19 +623,12 @@
                 <div class="nav-fab-container" id="navFab">
                     <button type="button" id="fabToggle" title="Navigation">🔗</button>
                     <div class="nav-options">
-                        <a href="https://oprasannakumar.github.io/LoanTransferGoogleSheets/" class="nav-item">🔄 Loan Entry</a>
-                        <a href="https://oprasannakumar.github.io/Self-TransferGoogleScripts/" class="nav-item">🏦 Self Transfer</a>
                         <a href="#" class="nav-item" onclick="openRecurringManager()">⏳ Recurring</a>
                         <a href="#" class="nav-item" onclick="openTemplateManager()">📋 Custom Templates</a>
                     </div>
                 </div>
                 <button type="button" id="themeToggle">🌙</button>
             </div>
-        </div>
-
-        <div class="receipt-flex" id="receiptFlexGroup">
-            <button type="button" id="btnShowAutofill" class="receipt-btn">✨ Use Receipt Auto-Fill</button>
-            <label class="receipt-btn upload-btn">📷<input type="file" id="receiptUpload" accept="image/*" hidden></label>
         </div>
 
         <div class="toggle-row">
@@ -614,7 +638,10 @@
             <button type="button" id="splitModeBtn" class="mode-btn" title="Loan / Split Mode"><span class="icon-shape">💸</span></button>
             <button type="button" id="selfTransferBtn" class="mode-btn" title="Self Transfer Mode"><span class="icon-shape">🏦</span></button>
         </div>
-
+        <div class="receipt-flex" id="receiptFlexGroup">
+            <button type="button" id="btnShowAutofill" class="receipt-btn">✨ Use Receipt Auto-Fill</button>
+            <label class="receipt-btn upload-btn">📷<input type="file" id="receiptUpload" accept="image/*" hidden></label>
+        </div>
         <div id="recurringOptions" class="hidden" style="margin-bottom:12px;">
             <label style="margin-top:0;">Frequency</label>
             <select id="recurringType">
@@ -641,7 +668,7 @@
             </div>
         </div>
 
-                <div style="margin-bottom: 14px;">
+        <div style="margin-bottom: 14px;">
             <label style="margin-top:0;">Narration</label>
             <div style="position:relative;">
                 <input type="text" id="narration" required placeholder="Description (or Template Name)" autocomplete="off">
@@ -665,7 +692,6 @@
                 <input type="text" id="invoice_no" placeholder="Enter Invoice Number">
             </div>
         </div>
-
 
         <div id="purposeGroup">
             <label style="margin-top:12px;">Purpose</label>
@@ -1147,6 +1173,7 @@
         const DB_NAME = "TransactionManagerDB_v4",
             STORE_NAME = "txn_queue";
         let db = null;
+        let isLoadingLogs = false;
 
         const navFab = document.getElementById('navFab');
         const fabBtn = document.getElementById('fabToggle');
@@ -1264,6 +1291,8 @@
         });
 
         async function fetchLogsForDate(dateStr) {
+            isLoadingLogs = true;
+            if (!document.getElementById('todayTxnModal').classList.contains('hidden')) renderDailyTxnsModal();
             document.getElementById('ballSpentVal').textContent = "↻";
             document.getElementById('ballIncomeVal').textContent = "↻";
             try {
@@ -1389,7 +1418,8 @@
                         stRows.forEach(st => {
                             const ref = st.refid;
                             if (!stGroups[ref]) {
-                                stGroups[ref] = { refid: ref, date: st.date, narration: st.narration, legs: [] };
+                                const cleanNarration = (st.narration || "").replace(/ \((From|To)\)/gi, "").trim();
+                                stGroups[ref] = { refid: ref, date: st.date, narration: cleanNarration, legs: [] };
                             }
                             stGroups[ref].legs.push(st);
                         });
@@ -1443,13 +1473,13 @@
                                     detailsHtml += `</div>`;
                                 }
                             });
-                            detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--primary)">Transfer Total</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">₹${totalAmt.toFixed(2)}</span></div>`;
+                            detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${totalAmt.toFixed(2)}</span></div>`;
 
                             txns.push({
                                 id: group.refid,
                                 narration: group.narration,
                                 amount: totalAmt,
-                                flow: 'withdraw',
+                                flow: 'self_transfer',
                                 details: `${sources.map(s=>s.account).join(', ')} ➔ ${destinations.map(d=>d.account).join(', ')}`,
                                 fullHtml: detailsHtml,
                                 ref: group.refid,
@@ -1466,13 +1496,16 @@
                     }
                 } catch (stErr) { console.error("Self transfer fetch error:", stErr); }
 
+                isLoadingLogs = false;
                 localStorage.setItem('daily_txns', JSON.stringify({ date: dateStr, txns: txns }));
                 renderSessionDashboard();
 
                 if (!document.getElementById('todayTxnModal').classList.contains('hidden')) renderDailyTxnsModal();
             } catch (err) {
                 console.error("Fetch Error:", err);
+                isLoadingLogs = false;
                 renderSessionDashboard();
+                if (!document.getElementById('todayTxnModal').classList.contains('hidden')) renderDailyTxnsModal();
             }
         }
 
@@ -1490,6 +1523,7 @@
             const data = getDailyTxns();
             let spent = 0, income = 0;
             data.txns.forEach(t => {
+                if (t.formState && t.formState.self_transfer) return;
                 if (t.flow === 'withdraw') spent += t.amount;
                 else if (t.flow === 'deposit') income += t.amount;
             });
@@ -1628,13 +1662,29 @@
             const data = getDailyTxns();
             const listDiv = document.getElementById('todayTxnList');
             listDiv.innerHTML = '';
+            if (isLoadingLogs) {
+                listDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="spinner"></div>
+                        <span style="font-size:12px;font-weight:600;color:var(--text-label);">Fetching transactions...</span>
+                    </div>
+                `;
+                return;
+            }
             if (data.txns.length === 0) {
-                listDiv.innerHTML = '<div style="text-align:center;color:var(--text-label);padding:15px;">No transactions logged for this date.</div>';
+                listDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <span style="font-size:13px;font-weight:600;color:var(--text-main);">No transactions found</span>
+                        <span style="font-size:11px;color:var(--text-label);">Entries logged for this date will appear here.</span>
+                    </div>
+                `;
                 return;
             }
             const sorted = [...data.txns].reverse();
             sorted.forEach(t => {
-                const color = t.flow === 'withdraw' ? 'var(--danger)' : 'var(--primary)';
+                const isSelf = t.formState && t.formState.self_transfer;
+                const color = isSelf ? 'var(--self-transfer)' : (t.flow === 'withdraw' ? 'var(--danger)' : 'var(--primary)');
                 const wrapper = document.createElement('div');
                 wrapper.className = 'daily-txn-container';
                 wrapper.innerHTML = `
@@ -2389,7 +2439,7 @@
                
                 // Construct leg items matching backend doPost parsing: p.date, p.narration, p.amount, p.refid, p.type, p.account, p.denoms
                 formState.sources.forEach(s => {
-                    const legNarration = `${narrationVal} (From)`;
+                    const legNarration = narrationVal;
                     const bodyObj = {
                         date: formState.date,
                         narration: legNarration,
@@ -2403,7 +2453,7 @@
                 });
 
                 formState.destinations.forEach(d => {
-                    const legNarration = `${narrationVal} (To)`;
+                    const legNarration = narrationVal;
                     const bodyObj = {
                         date: formState.date,
                         narration: legNarration,
@@ -2447,7 +2497,7 @@
                         detailsHtml += `</div>`;
                     }
                 });
-                detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--primary)">Transfer Total</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">₹${totalOut.toFixed(2)}</span></div>`;
+                detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${totalOut.toFixed(2)}</span></div>`;
 
                 document.getElementById('confirmDetails').innerHTML = detailsHtml;
 
@@ -3170,7 +3220,7 @@
                       <td style="text-align:center;">-</td>
                       <td style="text-align:center;padding-left:10px;"><strong>Self Transfer</strong><div style="font-size:10px;">${parsedObj.account} (${parsedObj.type})</div></td>
                       <td style="text-align:center;">self_transfer</td>
-                      <td style="text-align:center;">₹${(parsedObj.amount||0).toFixed(2)}</td>
+                      <td style="text-align:center; color:var(--self-transfer);">₹${(parsedObj.amount||0).toFixed(2)}</td>
                       <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
                     </tr>`;
                 } else {
@@ -3703,7 +3753,6 @@
             }
             return html;
         }
-
 
         function editCustomTemplate(index) {
             const list = JSON.parse(localStorage.getItem("customTemplates") || "[]");
