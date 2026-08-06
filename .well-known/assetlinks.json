@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.smart_transaction_from_68zs24j79_oprasannakumars_projects.twa",
+        "sha256_cert_fingerprints": ["2B:59:F6:78:5A:25:ED:FE:5A:03:02:F9:CA:DC:FA:18:30:66:34:3A:59:CB:93:F5:20:4B:C7:C3:43:B7:8D:DF"]
+      }
+    }]
