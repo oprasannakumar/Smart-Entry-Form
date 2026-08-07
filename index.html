@@ -982,9 +982,6 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtxq-LrJYu21QO07vBWWQrWhHtQ7hpkvYHeTsMAG0eAj3am6Tn0rryT5jDnRc-SwO-/exec";
         const IMAGE_PROCESS_URL = "https://script.google.com/macros/s/AKfycbyJUcI7u2YjRFzpemfGxXODskItJ-i6Eaz8HKfEF2b5qD2-9dZ2GtEsDmHzt6IaLtDY/exec";
         const DELETE_URL = "https://script.google.com/macros/s/AKfycbz5jwjriTJB2rqI7G66VmtdLTBGR0tQ4j_2iRKDubEERdR-pHI-Sg5OiORQxqgXsg_G/exec";
-       
-        // SELF TRANSFER SUBMISSION ENDPOINT
-        const SELF_TRANSFER_URL = "https://script.google.com/macros/s/AKfycbyW755SytjdG7e_qqlgkhHfFmdUvqr5SQv66B6yHF41Z0qeeuWuH3XdCzeEsMtbZwrKOA/exec";
 
         // --- GET STRICT IST DATE ---
         function getTodayIST() {
@@ -1028,9 +1025,7 @@
 
         document.addEventListener('focusin', (e) => {
             if (e.target && e.target.classList.contains('math-input')) {
-                // DO NOT OPEN KEYBOARD IF INPUT IS DISABLED OR READONLY
                 if (e.target.disabled || e.target.readOnly) return;
-
                 e.target.setAttribute('readonly', 'readonly');
                 if (!mathKeyboard.classList.contains('show')) { history.pushState({ keyboardOpen: true }, ""); }
                 activeMathInput = e.target;
@@ -1296,24 +1291,44 @@
             document.getElementById('ballSpentVal').textContent = "↻";
             document.getElementById('ballIncomeVal').textContent = "↻";
             try {
-                // Fetch regular transactions
                 const res = await fetch(`${SCRIPT_URL}?action=getTransactionsByDate&date=${dateStr}`);
                 const rows = await res.json();
-               
+
                 let txns = [];
-                if (!rows.error) {
-                    txns = rows.map(r => {
+                if (!rows.error && Array.isArray(rows)) {
+                    const stGroups = {};
+
+                    // Pass 1: Identify and group self-transfers securely
+                    rows.forEach(r => {
+                        const isSelfTransfer = r.category === 'self transfer' || 
+                                               (r.narration && (r.narration.includes('(From)') || r.narration.includes('(To)')));
+
+                        if (isSelfTransfer) {
+                            const ref = r.refId || r.refid;
+                            if (ref) {
+                                if (!stGroups[ref]) {
+                                    const cleanNarration = (r.narration || "").replace(/ \((From|To)\)/gi, "").trim();
+                                    stGroups[ref] = { refid: ref, date: r.date, narration: cleanNarration, legs: [] };
+                                }
+                                stGroups[ref].legs.push(r);
+                                r._processedAsST = true; // Mark as handled so normal loop skips it
+                            }
+                        }
+                    });
+
+                    // Pass 2: Process normal transactions safely
+                    txns = rows.filter(r => !r._processedAsST).map(r => {
                         const isWithdraw = r.withdrawn > 0;
                         const amount = isWithdraw ? r.withdrawn : r.deposit;
                         const flow = isWithdraw ? 'withdraw' : 'deposit';
-                       
+                        
                         let details = "";
                         if (r.payments && r.payments.length > 0) {
                             details = r.payments.map(p => `${p.account} (${p.type})`).join(", ");
                         } else if (r.account) {
                             details = `${r.account} (${r.type})`;
                         }
-                       
+                        
                         let fullHtml = "";
 
                         if (r.isSplit) {
@@ -1322,7 +1337,7 @@
                                 paymentsHtml = `<div class="confirm-section-title">Payments</div>`;
                                 r.payments.forEach(p => {
                                     paymentsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.account} (${p.type})</span><span class="confirm-val">₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
-                                   
+                                    
                                     if (p.type === "CASH" && p.denominations) {
                                         paymentsHtml += `<div class="confirm-matrix-grid">`;
                                         denoms.forEach(v => {
@@ -1346,7 +1361,7 @@
                                 <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(r.date)}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Narration</span><span class="confirm-val">${r.narration}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Invoice No.</span><span class="confirm-val">${r.invoice_no || '-'}</span></div>
-                                <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${r.refId}</span></div>
+                                <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${r.refId || r.refid}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Purpose</span><span class="confirm-val">${r.purpose}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Spent For</span><span class="confirm-val">${r.spent_for}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Flow</span><span class="confirm-val">${flow}</span></div>
@@ -1371,7 +1386,7 @@
                                 <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(r.date)}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Narration</span><span class="confirm-val">${r.narration}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Invoice No.</span><span class="confirm-val">${r.invoice_no || '-'}</span></div>
-                                <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${r.refId}</span></div>
+                                <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${r.refId || r.refid}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Purpose</span><span class="confirm-val">${r.purpose}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Spent For</span><span class="confirm-val">${r.spent_for}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Flow</span><span class="confirm-val">${flow}</span></div>
@@ -1384,18 +1399,18 @@
                         }
 
                         return {
-                            id: r.refId,
+                            id: r.refId || r.refid,
                             narration: r.narration,
                             amount: amount,
                             flow: flow,
                             details: details,
                             fullHtml: fullHtml,
-                            ref: r.refId,
+                            ref: r.refId || r.refid,
                             formState: {
                                 date: (r.date && r.date.includes('T')) ? r.date.split('T')[0] : r.date,
                                 narration: r.narration,
                                 invoice_no: r.invoice_no || '',
-                                reference: r.refId,
+                                reference: r.refId || r.refid,
                                 purpose: r.purpose,
                                 spent_for: r.spent_for,
                                 flow: flow,
@@ -1406,95 +1421,79 @@
                             }
                         };
                     });
-                }
 
-                // Fetch Self Transfer transactions aligned with backend doGet mapping
-                try {
-                    const stRes = await fetch(`${SELF_TRANSFER_URL}?action=getTransactionsByDate&date=${dateStr}`);
-                    const stRows = await stRes.json();
-                    if (Array.isArray(stRows) && stRows.length > 0) {
-                        // Group self transfer items by refid since each leg creates multiple rows (From/To)
-                        const stGroups = {};
-                        stRows.forEach(st => {
-                            const ref = st.refid;
-                            if (!stGroups[ref]) {
-                                const cleanNarration = (st.narration || "").replace(/ \((From|To)\)/gi, "").trim();
-                                stGroups[ref] = { refid: ref, date: st.date, narration: cleanNarration, legs: [] };
+                    // Pass 3: Process the built self-transfer groups and append them
+                    Object.values(stGroups).forEach(group => {
+                        const sources = [];
+                        const destinations = [];
+                        let totalAmt = 0;
+
+                        group.legs.forEach(leg => {
+                            const isFrom = leg.narration && leg.narration.includes("(From)");
+                            const legAmt = leg.withdrawn > 0 ? leg.withdrawn : (leg.deposit > 0 ? leg.deposit : leg.amount || 0);
+                            const itemObj = {
+                                type: leg.type,
+                                account: leg.account,
+                                amount: legAmt,
+                                denominations: leg.denominations || leg.denoms || null
+                            };
+                            if (isFrom) {
+                                sources.push(itemObj);
+                                totalAmt = Math.max(totalAmt, legAmt);
+                            } else {
+                                destinations.push(itemObj);
                             }
-                            stGroups[ref].legs.push(st);
                         });
 
-                        Object.values(stGroups).forEach(group => {
-                            const sources = [];
-                            const destinations = [];
-                            let totalAmt = 0;
+                        let detailsHtml = `
+                            <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(group.date)}</span></div>
+                            <div class="confirm-item"><span class="confirm-label">Narration</span><span class="confirm-val">${group.narration}</span></div>
+                            <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${group.refid}</span></div>
+                            <div class="confirm-section-title">FROM (SOURCES)</div>`;
+                        sources.forEach(s => {
+                            detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${s.account} (${s.type})</span><span class="confirm-val">₹${Number(s.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
+                            if (s.denominations) {
+                                detailsHtml += `<div class="confirm-matrix-grid">`;
+                                denoms.forEach(v => {
+                                    const val = s.denominations[v] || 0;
+                                    detailsHtml += `<div class="confirm-matrix-card"><span>₹${v}</span><strong>${val}</strong></div>`;
+                                });
+                                detailsHtml += `</div>`;
+                            }
+                        });
+                        detailsHtml += `<div class="confirm-section-title">TO (DESTINATIONS)</div>`;
+                        destinations.forEach(d => {
+                            detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${d.account} (${d.type})</span><span class="confirm-val">₹${Number(d.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
+                            if (d.denominations) {
+                                detailsHtml += `<div class="confirm-matrix-grid">`;
+                                denoms.forEach(v => {
+                                    const val = d.denominations[v] || 0;
+                                    detailsHtml += `<div class="confirm-matrix-card"><span>₹${v}</span><strong>${val}</strong></div>`;
+                                });
+                                detailsHtml += `</div>`;
+                            }
+                        });
+                        detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${Number(totalAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
 
-                            group.legs.forEach(leg => {
-                                const isFrom = leg.narration && leg.narration.includes("(From)");
-                                const itemObj = {
-                                    type: leg.type,
-                                    account: leg.account,
-                                    amount: leg.amount,
-                                    denominations: leg.denoms || null
-                                };
-                                if (isFrom) {
-                                    sources.push(itemObj);
-                                    totalAmt = Math.max(totalAmt, leg.amount);
-                                } else {
-                                    destinations.push(itemObj);
-                                }
-                            });
-
-                            let detailsHtml = `
-                                <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(group.date)}</span></div>
-                                <div class="confirm-item"><span class="confirm-label">Narration</span><span class="confirm-val">${group.narration}</span></div>
-                                <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${group.refid}</span></div>
-                                <div class="confirm-section-title">FROM (SOURCES)</div>`;
-                            sources.forEach(s => {
-                                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${s.account} (${s.type})</span><span class="confirm-val">₹${Number(s.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
-                                if (s.denominations) {
-                                    detailsHtml += `<div class="confirm-matrix-grid">`;
-                                    denoms.forEach(v => {
-                                        const val = s.denominations[v] || 0;
-                                        detailsHtml += `<div class="confirm-matrix-card"><span>₹${v}</span><strong>${val}</strong></div>`;
-                                    });
-                                    detailsHtml += `</div>`;
-                                }
-                            });
-                            detailsHtml += `<div class="confirm-section-title">TO (DESTINATIONS)</div>`;
-                            destinations.forEach(d => {
-                                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${d.account} (${d.type})</span><span class="confirm-val">₹${Number(d.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
-                                if (d.denominations) {
-                                    detailsHtml += `<div class="confirm-matrix-grid">`;
-                                    denoms.forEach(v => {
-                                        const val = d.denominations[v] || 0;
-                                        detailsHtml += `<div class="confirm-matrix-card"><span>₹${v}</span><strong>${val}</strong></div>`;
-                                    });
-                                    detailsHtml += `</div>`;
-                                }
-                            });
-                            detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${Number(totalAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
-
-                            txns.push({
-                                id: group.refid,
+                        txns.push({
+                            id: group.refid,
+                            narration: group.narration,
+                            amount: totalAmt,
+                            flow: 'self_transfer',
+                            details: `${sources.map(s=>s.account).join(', ')} ➔ ${destinations.map(d=>d.account).join(', ')}`,
+                            fullHtml: detailsHtml,
+                            ref: group.refid,
+                            formState: {
+                                date: (group.date && group.date.includes('T')) ? group.date.split('T')[0] : group.date,
                                 narration: group.narration,
-                                amount: totalAmt,
-                                flow: 'self_transfer',
-                                details: `${sources.map(s=>s.account).join(', ')} ➔ ${destinations.map(d=>d.account).join(', ')}`,
-                                fullHtml: detailsHtml,
-                                ref: group.refid,
-                                formState: {
-                                    date: (group.date && group.date.includes('T')) ? group.date.split('T')[0] : group.date,
-                                    narration: group.narration,
-                                    reference: group.refid,
-                                    self_transfer: true,
-                                    sources: sources,
-                                    destinations: destinations
-                                }
-                            });
+                                reference: group.refid,
+                                self_transfer: true,
+                                sources: sources,
+                                destinations: destinations
+                            }
                         });
-                    }
-                } catch (stErr) { console.error("Self transfer fetch error:", stErr); }
+                    });
+                }
 
                 isLoadingLogs = false;
                 localStorage.setItem('daily_txns', JSON.stringify({ date: dateStr, txns: txns }));
@@ -1508,7 +1507,6 @@
                 if (!document.getElementById('todayTxnModal').classList.contains('hidden')) renderDailyTxnsModal();
             }
         }
-
         function getDailyTxns() {
             const selectedDate = document.getElementById('date').value || getTodayIST();
             let data = JSON.parse(localStorage.getItem('daily_txns') || '{"date":"","txns":[]}');
@@ -1556,7 +1554,6 @@
             } else { showToast("🗑️ Removed locally"); }
         };
 
-        // --- HELPER TO HANDLE SELECT OR OTHER FALLBACK ---
         function setSelectOrOther(selectElem, otherElem, parentId, value) {
             if (!value) {
                 selectElem.value = "";
@@ -1580,7 +1577,6 @@
             if (parentId) toggleSmartOther(selectElem, otherElem ? otherElem.id : '', parentId, true);
         }
 
-        // --- EDIT DAILY LOG ---
         let editingLogId = null;
 
         window.editDailyTxn = function(id) {
@@ -1729,10 +1725,10 @@
                     content.style.transition = 'transform 0.25s ease'; 
                     if (currentX > 50) { 
                         content.style.transform = 'translateX(0)'; 
-                        removeDailyTxn(t.id); // Swipe Right to Delete
+                        removeDailyTxn(t.id);
                     } else if (currentX < -50) { 
                         content.style.transform = 'translateX(0)'; 
-                        editDailyTxn(t.id); // Swipe Left to Edit
+                        editDailyTxn(t.id);
                     } else { 
                         content.style.transform = 'translateX(0)'; 
                     } 
@@ -1760,7 +1756,6 @@
             });
         }
 
-        // --- SIDEWALL DRAGGABLE BALL LOGIC ---
         (function setupDraggableBall() {
             const ball = document.getElementById('dragDashBall');
             let isDragging = false;
@@ -1836,7 +1831,6 @@
             } catch (e) { console.log("Memory sync skipped (offline)"); }
         }
 
-        // --- INLINE CASH DENOMINATIONS GENERATOR MATCHED TO REFERENCE IMAGE ---
         function attachInlineCashBlock(wrapper, amtInput) {
             let cashBlock = wrapper.querySelector('.row-cash-wrapper');
             if (!cashBlock) {
@@ -1893,7 +1887,6 @@
                     aSel.add(new Option("Cash", "Cash"));
                     aSel.value = "Cash";
                     aSel.disabled = true;
-                    // DISABLE AMOUNT FIELD WHEN CASH IS SELECTED
                     amtInp.disabled = true;
                     cashBlock.classList.remove('hidden');
                 } else {
@@ -1945,7 +1938,6 @@
             }
         }
 
-        // --- SELF TRANSFER ROW CREATOR ---
         function createStRow(containerId, initial) {
             const container = document.getElementById(containerId);
             const wrapper = document.createElement('div');
@@ -1995,7 +1987,6 @@
                 otherAccInp.disabled = !isOther;
                 otherAccInp.required = isOther;
 
-                // Check if this is the destination container & type is Credit
                 if (containerId === 'stDestContainer' && tSel.value === 'Credit' && aSel.value && !isOther) {
                     try {
                         showToast(`🔍 Fetching due amount for ${aSel.value}...`);
@@ -2003,18 +1994,14 @@
                         const data = await res.json();
                         if (data && data.due !== undefined) {
                             const fetchedDue = Number(data.due).toFixed(2);
-                            
-                            // 1. Fill Destination Amount
                             amtInp.value = fetchedDue;
 
-                            // 2. Check Source total amount fields
                             let sourceTotal = 0;
                             const sourceAmtInputs = document.querySelectorAll('#stSourcesContainer .row-amt');
                             sourceAmtInputs.forEach(input => {
                                 sourceTotal += window.evalMath(input.value) || 0;
                             });
 
-                            // 3. Fill Source amount ONLY IF source sum matches fetched due amount
                             if (Math.abs(sourceTotal - Number(fetchedDue)) < 0.01) {
                                 showToast(`✔ Due amount fetched & matches source total (₹${fetchedDue})`);
                             } else if (sourceAmtInputs.length === 1 && (window.evalMath(sourceAmtInputs[0].value) || 0) === 0) {
@@ -2188,7 +2175,6 @@
             reader.readAsDataURL(file);
         });
 
-        // --- BUILD FORM STATE ---
         function buildFormState() {
             if (selfTransferMode) {
                 const sources = [], dests = [];
@@ -2266,7 +2252,6 @@
             };
         }
 
-        // --- BUILD COMPARISON GRID FOR EDIT ---
         function buildEditCompareHtml(oldState, newState) {
             let html = `<div class="col-header left">Existing</div><div class="col-header center">Field</div><div class="col-header right">New</div>`;
 
@@ -2327,7 +2312,6 @@
             };
         }
 
-        // --- FORM SUBMISSION ---
         document.getElementById('txnForm').onsubmit = function(e) {
             e.preventDefault();
             const form = e.target;
@@ -2402,59 +2386,6 @@
             proceedWithSave(null, null, false);
         };
 
-        // --- Edit Confirm Handlers ---
-        document.getElementById('btnConfirmEditSave').onclick = async function() {
-            const oldLogId = window._oldLogId;
-            const ref = window._editRef;
-            const newState = window._newFormState;
-            if (!oldLogId || !newState) { showToast("Edit data missing", "var(--danger)"); return; }
-
-            document.getElementById('editCompareModal').classList.add('hidden');
-           
-            const btn = document.getElementById('btnConfirmEditSave');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="saving-text">Updating...</span>';
-            btn.disabled = true;
-
-            try {
-                const data = getDailyTxns();
-                data.txns = data.txns.filter(t => t.id !== oldLogId);
-                localStorage.setItem('daily_txns', JSON.stringify(data));
-                renderSessionDashboard();
-                renderDailyTxnsModal();
-
-                showToast("🗑️ Deleting old record...");
-
-                if (ref) {
-                    await fetch(`${DELETE_URL}?action=delete&value=${encodeURIComponent(ref)}`, { method: "GET", mode: "no-cors" });
-                }
-
-                showToast("💾 Saving updated record...");
-
-                proceedWithSave(ref, newState, true);
-
-            } catch (err) {
-                console.error("Edit update failed:", err);
-                showToast("Update failed!", "var(--danger)");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                editingLogId = null;
-                window.editingOriginalTxn = null; 
-                window._oldLogId = null;
-                window._editRef = null;
-                window._newFormState = null;
-            }
-        };
-
-        document.getElementById('btnCancelEditSave').onclick = function() {
-            document.getElementById('editCompareModal').classList.add('hidden');
-            window._oldLogId = null;
-            window._editRef = null;
-            window._newFormState = null;
-            showToast("Edit cancelled");
-        };
-
         function proceedWithSave(overrideRef, overrideFormState, isEdit) {
             const isOnline = navigator.onLine;
             const isBatch = batchMode;
@@ -2472,37 +2403,32 @@
                 let totalOut = 0;
                 document.querySelectorAll('#stSourcesContainer .row-amt').forEach(i => totalOut += window.evalMath(i.value) || 0);
 
-                // Align JSON payload format to match backend doPost expectations for Self Transfer
                 const payloadsToSubmit = [];
                
-                // Construct leg items matching backend doPost parsing: p.date, p.narration, p.amount, p.refid, p.type, p.account, p.denoms
-                formState.sources.forEach(s => {
-                    const legNarration = narrationVal;
-                    const bodyObj = {
-                        date: formState.date,
-                        narration: legNarration,
-                        amount: s.amount,
-                        refid: refVal,
-                        type: s.type,
-                        account: s.account,
-                        denoms: s.denominations || {}
-                    };
-                    payloadsToSubmit.push(JSON.stringify(bodyObj));
-                });
+                const appendLegs = (legs, typeLabel) => {
+                    legs.forEach(leg => {
+                        const p = new URLSearchParams({
+                            action: 'selfTransfer',
+                            date: formState.date,
+                            narration: `${narrationVal} (${typeLabel})`,
+                            amount: leg.amount,
+                            reference: refVal,
+                            trtype: leg.type,
+                            from_to: leg.account,
+                            flow: typeLabel === 'From' ? 'withdraw' : 'deposit',
+                            category: 'self transfer'
+                        });
+                        if (leg.type === 'Cash' && leg.denominations) {
+                            Object.entries(leg.denominations).forEach(([val, count]) => {
+                                p.append('d' + val, count || 0);
+                            });
+                        }
+                        payloadsToSubmit.push(p.toString());
+                    });
+                };
 
-                formState.destinations.forEach(d => {
-                    const legNarration = narrationVal;
-                    const bodyObj = {
-                        date: formState.date,
-                        narration: legNarration,
-                        amount: d.amount,
-                        refid: refVal,
-                        type: d.type,
-                        account: d.account,
-                        denoms: d.denominations || {}
-                    };
-                    payloadsToSubmit.push(JSON.stringify(bodyObj));
-                });
+                appendLegs(formState.sources, 'From');
+                appendLegs(formState.destinations, 'To');
 
                 window.currentPayloads = payloadsToSubmit;
                 repeatData.push(JSON.stringify(formState));
@@ -2775,31 +2701,6 @@
             else document.getElementById('confirmModal').classList.remove('hidden');
         }
 
-        function syncRecurringBackup() {
-            const templates = localStorage.getItem("recurringTemplates");
-            fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ action: "backupRecurring", data: templates }) })
-                .then(r => r.text()).catch(() => console.log("Backup skipped (offline)"));
-            renderUpcomingRecurring();
-        }
-
-        function manualSyncRecurringBackup() {
-            const templates = localStorage.getItem("recurringTemplates");
-            fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({ action: "backupRecurring", data: templates }) })
-                .then(r => r.text()).then(() => showToast("☁️ Recurring backed up"))
-                .catch(() => showToast("Backup skipped (offline)", "#f59e0b"));
-        }
-
-        function manualRestoreRecurringFromDrive() {
-            fetch(SCRIPT_URL + "?action=getRecurringBackup").then(r => r.json()).then(data => {
-                if (data && data.length) { localStorage.setItem("recurringTemplates", JSON.stringify(data));
-                    renderRecurringTemplates();
-                    renderUpcomingRecurring();
-                    showToast("📥 Recurring restored from Drive"); } else { showToast("No backup found on Drive"); }
-            }).catch(() => showToast("Failed to restore", "var(--danger)"));
-        }
-
         async function processSave() {
             document.getElementById('confirmModal').classList.add('hidden');
             const btn = document.getElementById('submitBtn');
@@ -2807,20 +2708,12 @@
             btn.disabled = true;
             btn.innerHTML = `<span class="saving-text">Saving...</span>`;
             try {
-                const targetUrl = selfTransferMode ? SELF_TRANSFER_URL : SCRIPT_URL;
-
                 for (let body of window.currentPayloads) {
-                    const reqOptions = selfTransferMode ? {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain;charset=utf-8" },
-                        body: body
-                    } : {
+                    await fetch(SCRIPT_URL, {
                         method: "POST",
                         headers: { "Content-Type": "application/x-www-form-urlencoded" },
                         body: body
-                    };
-
-                    await fetch(targetUrl, reqOptions);
+                    });
                 }
                 showToast("✔ Transaction Saved");
                 updateRecurringNextDate();
@@ -2855,6 +2748,127 @@
                 saveToDB();
                 showToast("📦 Saved offline", "#3b82f6");
             } finally { btn.disabled = false; btn.textContent = originalText; }
+        }
+
+        async function syncAllData() {
+            if (!navigator.onLine) { showToast("Internet needed to sync.", "var(--danger)"); return; }
+            const txRead = db.transaction(STORE_NAME, "readonly");
+            const storeRead = txRead.objectStore(STORE_NAME);
+            const items = await new Promise(r => { storeRead.getAll().onsuccess = (e) => r(e.target.result); });
+            const keys = await new Promise(r => { storeRead.getAllKeys().onsuccess = (e) => r(e.target.result); });
+            if (items.length === 0) { showToast("Queue is empty"); return; }
+            const ok = await showConfirm(`Start syncing ${items.length} queued transactions?`);
+            if (!ok) return;
+            const btnSync = document.getElementById('btnSyncAll');
+            const btnStop = document.getElementById('btnStopSync');
+            syncAborted = false;
+            btnSync.classList.add('hidden');
+            btnStop.classList.remove('hidden');
+            for (let i = 0; i < items.length; i++) {
+                if (syncAborted) break;
+                btnStop.textContent = `🛑 Stop Syncing (${i+1}/${items.length})`;
+                try {
+                    let narration = "";
+                    try {
+                        const p = new URLSearchParams(items[i]);
+                        narration = p.get('narration');
+                    } catch(e) {}
+
+                    await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: items[i]
+                    });
+                   
+                    if (narration) triggerRecurringUpdateByNarration(narration);
+                    await new Promise(res => {
+                        const txDel = db.transaction(STORE_NAME, "readwrite");
+                        txDel.objectStore(STORE_NAME).delete(keys[i]).onsuccess = () => { updatePendingCount(); res(); };
+                    });
+                } catch (err) { console.error("Sync error:", err); showToast("Sync interrupted.", "var(--danger)"); break; }
+            }
+            btnStop.classList.add('hidden');
+            btnStop.textContent = "🛑 Stop Sync";
+            btnSync.classList.remove('hidden');
+            if (syncAborted) showToast("Sync stopped.");
+            else showToast("✔ All data synced to Drive");
+        }
+
+        document.getElementById('btnConfirmEditSave').onclick = async function() {
+            const oldLogId = window._oldLogId;
+            const ref = window._editRef;
+            const newState = window._newFormState;
+            if (!oldLogId || !newState) { showToast("Edit data missing", "var(--danger)"); return; }
+
+            document.getElementById('editCompareModal').classList.add('hidden');
+           
+            const btn = document.getElementById('btnConfirmEditSave');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="saving-text">Updating...</span>';
+            btn.disabled = true;
+
+            try {
+                const data = getDailyTxns();
+                data.txns = data.txns.filter(t => t.id !== oldLogId);
+                localStorage.setItem('daily_txns', JSON.stringify(data));
+                renderSessionDashboard();
+                renderDailyTxnsModal();
+
+                showToast("🗑️ Deleting old record...");
+
+                if (ref) {
+                    await fetch(`${DELETE_URL}?action=delete&value=${encodeURIComponent(ref)}`, { method: "GET", mode: "no-cors" });
+                }
+
+                showToast("💾 Saving updated record...");
+
+                proceedWithSave(ref, newState, true);
+
+            } catch (err) {
+                console.error("Edit update failed:", err);
+                showToast("Update failed!", "var(--danger)");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                editingLogId = null;
+                window.editingOriginalTxn = null; 
+                window._oldLogId = null;
+                window._editRef = null;
+                window._newFormState = null;
+            }
+        };
+
+        document.getElementById('btnCancelEditSave').onclick = function() {
+            document.getElementById('editCompareModal').classList.add('hidden');
+            window._oldLogId = null;
+            window._editRef = null;
+            window._newFormState = null;
+            showToast("Edit cancelled");
+        };
+
+        function syncRecurringBackup() {
+            const templates = localStorage.getItem("recurringTemplates");
+            fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ action: "backupRecurring", data: templates }) })
+                .then(r => r.text()).catch(() => console.log("Backup skipped (offline)"));
+            renderUpcomingRecurring();
+        }
+
+        function manualSyncRecurringBackup() {
+            const templates = localStorage.getItem("recurringTemplates");
+            fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ action: "backupRecurring", data: templates }) })
+                .then(r => r.text()).then(() => showToast("☁️ Recurring backed up"))
+                .catch(() => showToast("Backup skipped (offline)", "#f59e0b"));
+        }
+
+        function manualRestoreRecurringFromDrive() {
+            fetch(SCRIPT_URL + "?action=getRecurringBackup").then(r => r.json()).then(data => {
+                if (data && data.length) { localStorage.setItem("recurringTemplates", JSON.stringify(data));
+                    renderRecurringTemplates();
+                    renderUpcomingRecurring();
+                    showToast("📥 Recurring restored from Drive"); } else { showToast("No backup found on Drive"); }
+            }).catch(() => showToast("Failed to restore", "var(--danger)"));
         }
 
         function saveToDB() {
@@ -3058,7 +3072,6 @@
                 text = narrationField.value.trim();
             }
 
-            // Check for card bill clearance trigger
             if (text.toLowerCase().includes("cleared card bill") || text.toLowerCase().includes("cleared credit card bill")) {
                 setMode('selfTransfer', true);
                 narrationField.value = "Cleared Card Bill";
@@ -3167,63 +3180,6 @@
             return best;
         }
 
-        async function syncAllData() {
-            if (!navigator.onLine) { showToast("Internet needed to sync.", "var(--danger)"); return; }
-            const txRead = db.transaction(STORE_NAME, "readonly");
-            const storeRead = txRead.objectStore(STORE_NAME);
-            const items = await new Promise(r => { storeRead.getAll().onsuccess = (e) => r(e.target.result); });
-            const keys = await new Promise(r => { storeRead.getAllKeys().onsuccess = (e) => r(e.target.result); });
-            if (items.length === 0) { showToast("Queue is empty"); return; }
-            const ok = await showConfirm(`Start syncing ${items.length} queued transactions?`);
-            if (!ok) return;
-            const btnSync = document.getElementById('btnSyncAll');
-            const btnStop = document.getElementById('btnStopSync');
-            syncAborted = false;
-            btnSync.classList.add('hidden');
-            btnStop.classList.remove('hidden');
-            for (let i = 0; i < items.length; i++) {
-                if (syncAborted) break;
-                btnStop.textContent = `🛑 Stop Syncing (${i+1}/${items.length})`;
-                try {
-                    let isSelfTransfer = false;
-                    let narration = "";
-                    try {
-                        const parsedObj = JSON.parse(items[i]);
-                        if (parsedObj.refid && parsedObj.denoms) isSelfTransfer = true;
-                        narration = parsedObj.narration;
-                    } catch(e) {
-                        const p = new URLSearchParams(items[i]);
-                        if (p.get('action') === 'selfTransfer') isSelfTransfer = true;
-                        narration = p.get('narration');
-                    }
-
-                    const targetUrl = isSelfTransfer ? SELF_TRANSFER_URL : SCRIPT_URL;
-                    const reqOptions = isSelfTransfer ? {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain;charset=utf-8" },
-                        body: items[i]
-                    } : {
-                        method: "POST",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                        body: items[i]
-                    };
-
-                    await fetch(targetUrl, reqOptions);
-                   
-                    if (narration) triggerRecurringUpdateByNarration(narration);
-                    await new Promise(res => {
-                        const txDel = db.transaction(STORE_NAME, "readwrite");
-                        txDel.objectStore(STORE_NAME).delete(keys[i]).onsuccess = () => { updatePendingCount(); res(); };
-                    });
-                } catch (err) { console.error("Sync error:", err); showToast("Sync interrupted.", "var(--danger)"); break; }
-            }
-            btnStop.classList.add('hidden');
-            btnStop.textContent = "🛑 Stop Sync";
-            btnSync.classList.remove('hidden');
-            if (syncAborted) showToast("Sync stopped.");
-            else showToast("✔ All data synced to Drive");
-        }
-
         function triggerRecurringUpdateByNarration(narration) {
             let templates = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
             let updated = false;
@@ -3298,21 +3254,20 @@
                     const invoice = p.get('invoice_no') || "-";
                     const purpose = p.get('purpose') || "-";
                     body.innerHTML += `<tr>
-                  <td style="text-align:center;">${formatDisplayDate(p.get('date'))}</td>
-                  <td style="text-align:center;">${p.get('narration')}</td>
-                  <td style="text-align:center;">${invoice}</td>
-                  <td style="text-align:center;">${purpose}</td>
-                  <td style="text-align:center;">${spentFor}</td>
-                  <td style="text-align:center;padding-left:10px;">${accountDisplay}</td>
-                  <td style="text-align:center;">${flow}</td>
-                  <td style="text-align:center;">${amountDisplay}</td>
-                  <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="editQueue(${idx})">✏️</span><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
-                </tr>`;
+                      <td style="text-align:center;">${formatDisplayDate(p.get('date'))}</td>
+                      <td style="text-align:center;">${p.get('narration')}</td>
+                      <td style="text-align:center;">${invoice}</td>
+                      <td style="text-align:center;">${purpose}</td>
+                      <td style="text-align:center;">${spentFor}</td>
+                      <td style="text-align:center;padding-left:10px;">${accountDisplay}</td>
+                      <td style="text-align:center;">${flow}</td>
+                      <td style="text-align:center;">${amountDisplay}</td>
+                      <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="editQueue(${idx})">✏️</span><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
+                    </tr>`;
                 }
             });
         }
 
-        // --- NARRATION AUTOCOMPLETE ---
         const suggestBox = document.getElementById("narration-suggestions");
         const narrationInp = document.getElementById("narration");
         let autocompleteTimeout;
@@ -3383,7 +3338,6 @@
                     document.getElementById('narration').value = parsedObj.narration.replace(/ \((From|To)\)/g, '');
                     if (parsedObj.refid) document.getElementById('reference').value = parsedObj.refid;
 
-                    // Reconstruct sources/destinations from queue item leg
                     document.getElementById('stSourcesContainer').innerHTML = '';
                     document.getElementById('stDestContainer').innerHTML = '';
                     createStRow(parsedObj.narration.includes('(From)') ? 'stSourcesContainer' : 'stDestContainer', {
@@ -3439,7 +3393,6 @@
             };
         };
 
-        // --- RECURRING TEMPLATES ---
         function renderRecurringTemplates() {
             const list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
             const body = document.getElementById("recurringBody");
@@ -3488,7 +3441,6 @@
         function openRecurringManager() { renderRecurringTemplates(); document.getElementById("recurringModal").classList.remove("hidden"); }
         function closeRecurringManager() { document.getElementById("recurringModal").classList.add("hidden"); }
 
-        // --- CUSTOM TEMPLATES ---
         function openTemplateManager() { renderCustomTemplates(); document.getElementById("templateModal").classList.remove("hidden"); }
         function closeTemplateManager() { document.getElementById("templateModal").classList.add("hidden"); }
 
@@ -3647,7 +3599,6 @@
                 });
                 template = { name: nameInp, narration, self_transfer: true, sources, destinations: dests };
             } else {
-
                 const purpose = document.getElementById("purpose").value === 'Other' ? document.getElementById("purpose_other").value : document.getElementById("purpose").value;
                 const spentFor = document.getElementById("spent_for").value === 'Other' ? document.getElementById("spent_for_other").value : document.getElementById("spent_for").value;
                 const flow = document.getElementById("flow").value;
@@ -3741,7 +3692,6 @@
                 html += `<div class="diff-heading"><span>${text}</span></div>`;
             }
 
-            // Helper to format an individual payment/leg showing its amount and cash denominations
             function formatPmt(p) {
                 if (!p) return "-";
                 let res = `₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -3962,10 +3912,10 @@
             preview.classList.remove("hidden");
            
             let html = `<div style="font-weight:700;margin-bottom:8px;color:var(--primary);font-size:13px;display:flex;align-items:center;justify-content:space-between;">
-                          <span>⏳ Due Today</span>
-                          <span style="cursor:pointer;color:var(--text-label);font-size:16px;line-height:1;padding:0 4px;" title="Dismiss" onclick="document.getElementById('recurringPreview').classList.add('hidden')">✕</span>
-                        </div>`;
-                       
+                        <span>⏳ Due Today</span>
+                        <span style="cursor:pointer;color:var(--text-label);font-size:16px;line-height:1;padding:0 4px;" title="Dismiss" onclick="document.getElementById('recurringPreview').classList.add('hidden')">✕</span>
+                      </div>`;
+                   
             dueTemplates.forEach(t => {
                 let amt = "0.00", acc = "";
                 if (t.split_enabled) {
@@ -4133,7 +4083,6 @@
             });
         }
 
-        // --- EVENT BINDINGS ---
         document.getElementById('btnAddMode').onclick = () => createPaymentRow();
         document.getElementById('btnViewQueue').onclick = () => document.getElementById('queueModal').classList.remove('hidden');
         document.getElementById('btnSyncAll').onclick = syncAllData;
