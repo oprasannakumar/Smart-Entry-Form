@@ -20,7 +20,7 @@
       --secondary: #3b82f6;
       --danger: #f87171;
       --purple: #8b5cf6;
-      --self-transfer: #eab308; /* Yellow/Amber hue for self transfers */
+      --self-transfer: #eab308;
       --bg-body: linear-gradient(135deg,#eef2f7,#f9fafb);
       --bg-card: #ffffff;
       --text-main: #1f2937;
@@ -608,8 +608,8 @@
     <div id="dragDashBall" title="Drag vertically. Tap to view selected date's log">
         <span class="ball-icon">📊</span>
         <div class="ball-text">
-            <span class="ball-income" id="ballIncomeVal">+₹0</span>
-            <span class="ball-spent" id="ballSpentVal">-₹0</span>
+            <span class="ball-income" id="ballIncomeVal">+₹0.00</span>
+            <span class="ball-spent" id="ballSpentVal">-₹0.00</span>
         </div>
     </div>
 
@@ -863,10 +863,10 @@
 
     <!-- Transaction Details Modal -->
     <div id="dailyTxnDetailsModal" class="modal hidden">
-        <div class="confirm-card" style="max-width:90%;width:450px;padding:18px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:12px;">
-                <h3 style="margin:0;font-size:15px;">Transaction Details</h3>
-                <span style="cursor:pointer;font-size:18px;" onclick="document.getElementById('dailyTxnDetailsModal').classList.add('hidden')">✕</span>
+        <div class="confirm-card" style="max-width:90%;width:450px;padding:20px;">
+            <div class="header-row-top" style="margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:15px; text-align:left; grid-column:auto; grid-row:auto;">Transaction Details</h3>
+                <span style="cursor:pointer; font-size:18px; line-height:1; font-weight:bold;" onclick="document.getElementById('dailyTxnDetailsModal').classList.add('hidden')">✕</span>
             </div>
             <div id="dailyTxnDetailsContent" style="font-size:13px;max-height:75vh;overflow-y:auto;padding-right:5px;"></div>
         </div>
@@ -1321,7 +1321,7 @@
                             if (r.payments && r.payments.length > 0) {
                                 paymentsHtml = `<div class="confirm-section-title">Payments</div>`;
                                 r.payments.forEach(p => {
-                                    paymentsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.account} (${p.type})</span><span class="confirm-val">₹${p.amount.toFixed(2)}</span></div>`;
+                                    paymentsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.account} (${p.type})</span><span class="confirm-val">₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                                    
                                     if (p.type === "CASH" && p.denominations) {
                                         paymentsHtml += `<div class="confirm-matrix-grid">`;
@@ -1338,7 +1338,7 @@
                             if (r.recipients && r.recipients.length > 0) {
                                 recipHtml = `<div class="confirm-section-title">Recipients</div>`;
                                 r.recipients.forEach(rec => {
-                                    recipHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${rec.name}</span><span class="confirm-val">₹${rec.amount.toFixed(2)}</span></div>`;
+                                    recipHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${rec.name}</span><span class="confirm-val">₹${Number(rec.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                                 });
                             }
 
@@ -1351,10 +1351,10 @@
                                 <div class="confirm-item"><span class="confirm-label">Spent For</span><span class="confirm-val">${r.spent_for}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Flow</span><span class="confirm-val">${flow}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Split Mode</span><span class="confirm-val">Enabled</span></div>
-                                <div class="confirm-item"><span class="confirm-label">Personal Share</span><span class="confirm-val">₹${(r.personal_share || 0).toFixed(2)}</span></div>
+                                <div class="confirm-item"><span class="confirm-label">Personal Share</span><span class="confirm-val">₹${Number(r.personal_share || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 ${recipHtml}
                                 ${paymentsHtml}
-                                <div class="confirm-item" style="border:none"><span class="confirm-label" style="color:var(--primary)">Total Amount</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">₹${amount.toFixed(2)}</span></div>
+                                <div class="confirm-item" style="border:none"><span class="confirm-label" style="color:var(--primary)">Total Amount</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                             `;
                         } else {
                             let cashSummary = "";
@@ -1375,10 +1375,10 @@
                                 <div class="confirm-item"><span class="confirm-label">Purpose</span><span class="confirm-val">${r.purpose}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Spent For</span><span class="confirm-val">${r.spent_for}</span></div>
                                 <div class="confirm-item"><span class="confirm-label">Flow</span><span class="confirm-val">${flow}</span></div>
-                                <div class="confirm-item" style="border:none"><span class="confirm-label" style="color:var(--primary)">Total Amount</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">₹${amount.toFixed(2)}</span></div>
+                                <div class="confirm-item" style="border:none"><span class="confirm-label" style="color:var(--primary)">Total Amount</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 <br>
                                 <div class="confirm-section-title">Payments</div>
-                                <div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${r.account} (${r.type})</span><span class="confirm-val">₹${amount.toFixed(2)}</span></div>
+                                <div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${r.account} (${r.type})</span><span class="confirm-val">₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 ${cashSummary}
                             `;
                         }
@@ -1451,7 +1451,7 @@
                                 <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${group.refid}</span></div>
                                 <div class="confirm-section-title">FROM (SOURCES)</div>`;
                             sources.forEach(s => {
-                                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${s.account} (${s.type})</span><span class="confirm-val">₹${(s.amount||0).toFixed(2)}</span></div>`;
+                                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${s.account} (${s.type})</span><span class="confirm-val">₹${Number(s.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                                 if (s.denominations) {
                                     detailsHtml += `<div class="confirm-matrix-grid">`;
                                     denoms.forEach(v => {
@@ -1463,7 +1463,7 @@
                             });
                             detailsHtml += `<div class="confirm-section-title">TO (DESTINATIONS)</div>`;
                             destinations.forEach(d => {
-                                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${d.account} (${d.type})</span><span class="confirm-val">₹${(d.amount||0).toFixed(2)}</span></div>`;
+                                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${d.account} (${d.type})</span><span class="confirm-val">₹${Number(d.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                                 if (d.denominations) {
                                     detailsHtml += `<div class="confirm-matrix-grid">`;
                                     denoms.forEach(v => {
@@ -1473,7 +1473,7 @@
                                     detailsHtml += `</div>`;
                                 }
                             });
-                            detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${totalAmt.toFixed(2)}</span></div>`;
+                            detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${Number(totalAmt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
 
                             txns.push({
                                 id: group.refid,
@@ -1527,8 +1527,8 @@
                 if (t.flow === 'withdraw') spent += t.amount;
                 else if (t.flow === 'deposit') income += t.amount;
             });
-            document.getElementById('ballSpentVal').textContent = '-₹' + Math.round(spent).toLocaleString('en-IN');
-            document.getElementById('ballIncomeVal').textContent = '+₹' + Math.round(income).toLocaleString('en-IN');
+            document.getElementById('ballSpentVal').textContent = '-₹' + Number(spent).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('ballIncomeVal').textContent = '+₹' + Number(income).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function addDailyTxn(narration, amount, flow, details, fullHtml, ref, formState) {
@@ -1685,6 +1685,7 @@
             sorted.forEach(t => {
                 const isSelf = t.formState && t.formState.self_transfer;
                 const color = isSelf ? 'var(--self-transfer)' : (t.flow === 'withdraw' ? 'var(--danger)' : 'var(--primary)');
+                const formattedAmount = Number(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 const wrapper = document.createElement('div');
                 wrapper.className = 'daily-txn-container';
                 wrapper.innerHTML = `
@@ -1701,7 +1702,7 @@
                         <span style="color:var(--text-label);font-size:10px;">${t.details}</span>
                       </div>
                       <div style="font-weight:700;color:${color};padding-left:8px;flex-shrink:0;">
-                        ₹${t.amount.toFixed(2)}
+                        ₹${formattedAmount}
                       </div>
                     </div>
                   </div>
@@ -1988,11 +1989,48 @@
                 window.calcStTotals();
             };
 
-            aSel.onchange = () => {
+            aSel.onchange = async () => {
                 const isOther = aSel.value === 'Other';
                 otherAccInp.classList.toggle('hidden', !isOther);
                 otherAccInp.disabled = !isOther;
                 otherAccInp.required = isOther;
+
+                // Check if this is the destination container & type is Credit
+                if (containerId === 'stDestContainer' && tSel.value === 'Credit' && aSel.value && !isOther) {
+                    try {
+                        showToast(`🔍 Fetching due amount for ${aSel.value}...`);
+                        const res = await fetch(`${SCRIPT_URL}?action=getCardDue&cardName=${encodeURIComponent(aSel.value)}`);
+                        const data = await res.json();
+                        if (data && data.due !== undefined) {
+                            const fetchedDue = Number(data.due).toFixed(2);
+                            
+                            // 1. Fill Destination Amount
+                            amtInp.value = fetchedDue;
+
+                            // 2. Check Source total amount fields
+                            let sourceTotal = 0;
+                            const sourceAmtInputs = document.querySelectorAll('#stSourcesContainer .row-amt');
+                            sourceAmtInputs.forEach(input => {
+                                sourceTotal += window.evalMath(input.value) || 0;
+                            });
+
+                            // 3. Fill Source amount ONLY IF source sum matches fetched due amount
+                            if (Math.abs(sourceTotal - Number(fetchedDue)) < 0.01) {
+                                showToast(`✔ Due amount fetched & matches source total (₹${fetchedDue})`);
+                            } else if (sourceAmtInputs.length === 1 && (window.evalMath(sourceAmtInputs[0].value) || 0) === 0) {
+                                sourceAmtInputs[0].value = fetchedDue;
+                                showToast(`✔ Due amount fetched & filled in Source & Destination (₹${fetchedDue})`);
+                            } else {
+                                showToast(`✔ Due amount fetched: ₹${fetchedDue} (Source sum doesn't match)`);
+                            }
+
+                            window.calcStTotals();
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch card due amount:", err);
+                        showToast("Could not fetch due amount", "var(--danger)");
+                    }
+                }
             };
 
             container.appendChild(wrapper);
@@ -2475,7 +2513,7 @@
                     <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${refVal}</span></div>
                     <div class="confirm-section-title">FROM (SOURCES)</div>`;
                 formState.sources.forEach(s => {
-                    detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${s.account} (${s.type})</span><span class="confirm-val">₹${s.amount.toFixed(2)}</span></div>`;
+                    detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${s.account} (${s.type})</span><span class="confirm-val">₹${Number(s.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                     if (s.denominations && s.type === 'Cash') {
                         detailsHtml += `<div class="confirm-matrix-grid">`;
                         denoms.forEach(v => {
@@ -2487,7 +2525,7 @@
                 });
                 detailsHtml += `<div class="confirm-section-title">TO (DESTINATIONS)</div>`;
                 formState.destinations.forEach(d => {
-                    detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${d.account} (${d.type})</span><span class="confirm-val">₹${d.amount.toFixed(2)}</span></div>`;
+                    detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${d.account} (${d.type})</span><span class="confirm-val">₹${Number(d.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                     if (d.denominations && d.type === 'Cash') {
                         detailsHtml += `<div class="confirm-matrix-grid">`;
                         denoms.forEach(v => {
@@ -2497,7 +2535,7 @@
                         detailsHtml += `</div>`;
                     }
                 });
-                detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${totalOut.toFixed(2)}</span></div>`;
+                detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${Number(totalOut || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
 
                 document.getElementById('confirmDetails').innerHTML = detailsHtml;
 
@@ -2581,14 +2619,14 @@
                 <div class="confirm-item"><span class="confirm-label">Spent For</span><span class="confirm-val">${sFinal}</span></div>
                 <div class="confirm-item"><span class="confirm-label">Flow</span><span class="confirm-val">${currentFlow}</span></div>
                 <div class="confirm-item"><span class="confirm-label">Split Mode</span><span class="confirm-val">Enabled</span></div>
-                <div class="confirm-item"><span class="confirm-label">Personal Share</span><span class="confirm-val">₹${splitData.personal.toFixed(2)}</span></div>
+                <div class="confirm-item"><span class="confirm-label">Personal Share</span><span class="confirm-val">₹${Number(splitData.personal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                 <div class="confirm-section-title">Recipients</div>`;
                     splitData.recipients.forEach(r => {
-                        html += `<div class="confirm-item"><span class="confirm-label">${r.name}</span><span class="confirm-val">₹${r.amount.toFixed(2)}</span></div>`;
+                        html += `<div class="confirm-item"><span class="confirm-label">${r.name}</span><span class="confirm-val">₹${Number(r.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                     });
                     html += `<div class="confirm-section-title">Payments</div>`;
                     formState.payments.forEach(p => {
-                        html += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.account} (${p.type})</span><span class="confirm-val">₹${p.amount}</span></div>`;
+                        html += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.account} (${p.type})</span><span class="confirm-val">₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                         if (p.denominations) {
                             html += `<div class="confirm-matrix-grid">`;
                             Object.entries(p.denominations).forEach(([val, count]) => {
@@ -2691,7 +2729,7 @@
             window.currentPayloads.forEach(payloadStr => {
                 const p = new URLSearchParams(payloadStr);
                 const amt = p.get('flow') === 'withdraw' ? p.get('withdrawn') : p.get('deposit');
-                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.get('from_to')} (${p.get('trtype')})</span><span class="confirm-val">₹${amt}</span></div>`;
+                detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.get('from_to')} (${p.get('trtype')})</span><span class="confirm-val">₹${Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
             });
 
             document.getElementById('confirmDetails').innerHTML = detailsHtml;
@@ -3019,6 +3057,21 @@
                 if (!narrationField.value) { narrationField.value = "BIKETAXI"; }
                 text = narrationField.value.trim();
             }
+
+            // Check for card bill clearance trigger
+            if (text.toLowerCase().includes("cleared card bill") || text.toLowerCase().includes("cleared credit card bill")) {
+                setMode('selfTransfer', true);
+                narrationField.value = "Cleared Card Bill";
+                const destRows = document.querySelectorAll('#stDestContainer .payment-row-wrapper');
+                if (destRows.length > 0) {
+                    const tSel = destRows[0].querySelector('.row-type');
+                    tSel.value = "Credit";
+                    tSel.dispatchEvent(new Event('change'));
+                }
+                showToast("🏦 Self Transfer Mode Activated (Card Bill Clearing)");
+                return;
+            }
+
             const flowField = document.getElementById('flow');
             const purposeSelect = document.getElementById("purpose");
             const spentForSelect = document.getElementById("spent_for");
@@ -3220,7 +3273,7 @@
                       <td style="text-align:center;">-</td>
                       <td style="text-align:center;padding-left:10px;"><strong>Self Transfer</strong><div style="font-size:10px;">${parsedObj.account} (${parsedObj.type})</div></td>
                       <td style="text-align:center;">self_transfer</td>
-                      <td style="text-align:center; color:var(--self-transfer);">₹${(parsedObj.amount||0).toFixed(2)}</td>
+                      <td style="text-align:center; color:var(--self-transfer);">₹${Number(parsedObj.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
                     </tr>`;
                 } else {
@@ -3234,11 +3287,11 @@
                         const personalShare = parseFloat(p.get('personal_share') || 0);
                         const payments = JSON.parse(p.get('payments') || '[]');
                         const totalAmt = payments.reduce((sum, pmt) => sum + (parseFloat(pmt.amount) || 0), 0);
-                        amountDisplay = `₹${totalAmt.toFixed(2)}`;
-                        accountDisplay = `<strong>Split</strong><div style="font-size:10px;">Personal: ₹${personalShare.toFixed(2)}</div>`;
+                        amountDisplay = `₹${totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        accountDisplay = `<strong>Split</strong><div style="font-size:10px;">Personal: ₹${personalShare.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`;
                     } else {
                         const amt = parseFloat(p.get('withdrawn')) > 0 ? p.get('withdrawn') : p.get('deposit');
-                        amountDisplay = `₹${amt}`;
+                        amountDisplay = `₹${Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                         accountDisplay = `<strong>${p.get('from_to')}</strong><div style="font-size:10px;color:#94a3b8;">(${p.get('trtype')})</div>`;
                         flow = p.get('flow');
                     }
@@ -3398,7 +3451,8 @@
                     account = params.get("from_to") || "-";
                     amount = params.get("withdrawn") && params.get("withdrawn") !== "0" ? params.get("withdrawn") : params.get("deposit");
                 }
-                body.innerHTML += `<tr><td>${t.date ? formatDisplayDate(t.date) : t.day}</td><td>${t.narration}</td><td>${t.purpose||"-"}</td><td>${t.spent_for||"-"}</td><td>${t.flow||"-"}</td><td>${account}</td><td>₹${amount || "-"}</td><td><div class="td-center"><span style="cursor:pointer;font-size:16px" onclick="editRecurring(${index})">✏️</span><span onclick="loadRecurring(${index})">📥</span><span onclick="toggleRecurring(${index})">${t.active ? "🟢" : "⚪"}</span><span onclick="deleteRecurring(${index})">🗑️</span></div></td></tr>`;
+                const formattedAmt = amount ? `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-";
+                body.innerHTML += `<tr><td>${t.date ? formatDisplayDate(t.date) : t.day}</td><td>${t.narration}</td><td>${t.purpose||"-"}</td><td>${t.spent_for||"-"}</td><td>${t.flow||"-"}</td><td>${account}</td><td>${formattedAmt}</td><td><div class="td-center"><span style="cursor:pointer;font-size:16px" onclick="editRecurring(${index})">✏️</span><span onclick="loadRecurring(${index})">📥</span><span onclick="toggleRecurring(${index})">${t.active ? "🟢" : "⚪"}</span><span onclick="deleteRecurring(${index})">🗑️</span></div></td></tr>`;
             });
         }
 
@@ -3690,7 +3744,7 @@
             // Helper to format an individual payment/leg showing its amount and cash denominations
             function formatPmt(p) {
                 if (!p) return "-";
-                let res = `₹${p.amount}`;
+                let res = `₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 if (p.type && p.type.toUpperCase() === 'CASH' && p.denominations) {
                     const denomsStr = Object.entries(p.denominations)
                         .filter(([k, v]) => Number(v) > 0)
@@ -3713,7 +3767,7 @@
 
                 if (oldT.split_enabled || newT.split_enabled) {
                     addHeading("Split Details");
-                    addRow("Personal", `₹${(oldT.personal_share||0).toFixed(2)}`, `₹${(newT.personal_share||0).toFixed(2)}`);
+                    addRow("Personal", `₹${Number(oldT.personal_share || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `₹${Number(newT.personal_share || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
                 }
 
                 addHeading("Payments");
@@ -3729,12 +3783,12 @@
                 addHeading("Self Transfer");
                 const oldTotal = (oldT.sources || []).reduce((s, p) => s + (p.amount || 0), 0);
                 const newTotal = (newT.sources || []).reduce((s, p) => s + (p.amount || 0), 0);
-                addRow("Transfer Total", `₹${oldTotal.toFixed(2)}`, `₹${newTotal.toFixed(2)}`);
+                addRow("Transfer Total", `₹${Number(oldTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `₹${Number(newTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
                 const formatLegs = (legs) => {
                     if (!legs || legs.length === 0) return "-";
                     return legs.map(p => {
-                        let res = `<b>${p.account}</b>: ₹${p.amount}`;
+                        let res = `<b>${p.account}</b>: ₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                         if (p.type && p.type.toUpperCase() === 'CASH' && p.denominations) {
                             const denomsStr = Object.entries(p.denominations)
                                 .filter(([k, v]) => Number(v) > 0)
@@ -3774,10 +3828,10 @@
                 if (t.self_transfer) {
                     account = `${(t.sources||[]).map(s=>s.account).join(', ')} ➔ ${(t.destinations||[]).map(d=>d.account).join(', ')}`;
                     const tot = (t.sources||[]).reduce((s, r) => s + (r.amount||0), 0);
-                    amount = `₹${tot.toFixed(2)}`;
+                    amount = `₹${Number(tot || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 } else if (t.payments && t.payments.length > 0) { 
                     account = t.payments[0].account || "-"; 
-                    amount = t.payments[0].amount ? `₹${t.payments[0].amount}` : "-"; 
+                    amount = t.payments[0].amount ? `₹${Number(t.payments[0].amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"; 
                 }
                 body.innerHTML += `<tr>
               <td><strong>${t.name}</strong></td>
@@ -3923,11 +3977,12 @@
                     amt = p.get("withdrawn") !== "0" ? p.get("withdrawn") : p.get("deposit");
                     acc = p.get("from_to");
                 }
+                const formattedAmt = Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 html += `
               <div onclick="loadRecurring(${t.originalIndex})" style="cursor:pointer;padding:10px;margin-bottom:6px;background:var(--bg-card);border-radius:10px;border:1px solid var(--border-color);box-shadow:0 2px 5px rgba(0,0,0,0.05);transition:transform 0.1s active;">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                   <div style="font-weight:600;font-size:13px;color:var(--text-main);">${t.narration}</div>
-                  <div style="font-weight:700;font-size:13px;color:var(--primary);">₹${amt}</div>
+                  <div style="font-weight:700;font-size:13px;color:var(--primary);">₹${formattedAmt}</div>
                 </div>
                 <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text-label);">
                   <span>📂 ${t.purpose||'General'}</span>
