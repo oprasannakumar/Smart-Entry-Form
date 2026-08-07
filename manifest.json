@@ -1,24 +1,26 @@
 {
   "name": "Smart Entry Form",
-  "short_name": "SmartForm",
-  "description": "Smart Financial Transaction Entry Form",
+  "short_name": "Smart Entry Form",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#fcfcfc",
-  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "icon.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "maskable-icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -27,28 +29,28 @@
       "short_name": "Bike Taxi",
       "description": "Quick launch into Bike Taxi deposit entry",
       "url": "./index.html?mode=biketaxi",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "icon.png", "sizes": "192x192" }]
     },
     {
       "name": "Self Transfer",
       "short_name": "Self Transfer",
       "description": "Move funds between accounts",
       "url": "./index.html?mode=selftransfer",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "icon.png", "sizes": "192x192" }]
     },
     {
       "name": "View Offline Queue",
       "short_name": "Queue",
       "description": "Check pending offline transactions",
       "url": "./index.html?action=queue",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "icon.png", "sizes": "192x192" }]
     },
     {
       "name": "Custom Templates",
       "short_name": "Templates",
       "description": "Manage custom transaction templates",
       "url": "./index.html?action=templates",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "icon.png", "sizes": "192x192" }]
     }
   ]
 }
