@@ -1,4 +1,4 @@
-<!DOCTYPE html>.
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -863,12 +863,12 @@
 
     <!-- Transaction Details Modal -->
     <div id="dailyTxnDetailsModal" class="modal hidden">
-        <div class="confirm-card" style="max-width:90%;width:450px;padding:20px;">
-            <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border-color);padding-bottom:10px;font-size:15px;">Transaction Details</h3>
-            <div id="dailyTxnDetailsContent" style="font-size:13px;max-height:75vh;overflow-y:auto;padding-right:5px;"></div>
-            <div class="btn-group" style="margin-top:15px;">
-                <button type="button" class="btn-cancel" style="grid-column:1 / -1;" onclick="document.getElementById('dailyTxnDetailsModal').classList.add('hidden')">Close</button>
+        <div class="confirm-card" style="max-width:90%;width:450px;padding:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:12px;">
+                <h3 style="margin:0;font-size:15px;">Transaction Details</h3>
+                <span style="cursor:pointer;font-size:18px;" onclick="document.getElementById('dailyTxnDetailsModal').classList.add('hidden')">✕</span>
             </div>
+            <div id="dailyTxnDetailsContent" style="font-size:13px;max-height:75vh;overflow-y:auto;padding-right:5px;"></div>
         </div>
     </div>
 
@@ -1539,7 +1539,7 @@
         }
 
         window.removeDailyTxn = async function(id) {
-            const ok = await showConfirm("Delete transaction locally and from the backend?");
+            const ok = await showConfirm("Delete this transaction locally and from the backend?");
             if (!ok) return;
             const data = getDailyTxns();
             const txn = data.txns.find(t => t.id === id);
