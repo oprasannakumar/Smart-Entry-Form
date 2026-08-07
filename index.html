@@ -601,6 +601,7 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
+    
   </style>
 </head>
 <body>
@@ -1757,50 +1758,60 @@
         }
 
         (function setupDraggableBall() {
-            const ball = document.getElementById('dragDashBall');
-            let isDragging = false;
-            let startY = 0;
-            let initialTop = 180;
-            let hasMoved = false;
+    const ball = document.getElementById('dragDashBall');
+    let isDragging = false;
+    let startY = 0;
+    let initialTop = 180;
+    let hasMoved = false;
 
-            const onStart = (e) => {
-                isDragging = true;
-                hasMoved = false;
-                startY = e.touches ? e.touches[0].clientY : e.clientY;
-                initialTop = ball.offsetTop;
-            };
+    // 1. Restore saved vertical position on initial page load
+    const savedTop = localStorage.getItem('dragDashBallTop');
+    if (savedTop !== null) {
+        ball.style.top = savedTop + 'px';
+    }
 
-            const onMove = (e) => {
-                if (!isDragging) return;
-                const currentY = e.touches ? e.touches[0].clientY : e.clientY;
-                const deltaY = currentY - startY;
-                if (Math.abs(deltaY) > 4) {
-                    hasMoved = true;
-                }
-                let newTop = initialTop + deltaY;
-                const maxTop = window.innerHeight - ball.offsetHeight - 10;
-                newTop = Math.max(10, Math.min(newTop, maxTop));
-                ball.style.top = newTop + 'px';
-            };
+    const onStart = (e) => {
+        isDragging = true;
+        hasMoved = false;
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
+        initialTop = ball.offsetTop;
+    };
 
-            const onEnd = (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                if (!hasMoved) {
-                    renderDailyTxnsModal();
-                    document.getElementById('dailyLogTitle').textContent = `Logs for ${formatDisplayDate(document.getElementById('date').value)}`;
-                    document.getElementById('todayTxnModal').classList.remove('hidden');
-                }
-            };
+    const onMove = (e) => {
+        if (!isDragging) return;
+        const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+        const deltaY = currentY - startY;
+        if (Math.abs(deltaY) > 4) {
+            hasMoved = true;
+        }
+        let newTop = initialTop + deltaY;
+        const maxTop = window.innerHeight - ball.offsetHeight - 10;
+        newTop = Math.max(10, Math.min(newTop, maxTop));
+        ball.style.top = newTop + 'px';
+    };
 
-            ball.addEventListener('touchstart', onStart, { passive: true });
-            window.addEventListener('touchmove', onMove, { passive: true });
-            window.addEventListener('touchend', onEnd);
+    const onEnd = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        if (hasMoved) {
+            // 2. Save final position to localStorage after dragging stops
+            localStorage.setItem('dragDashBallTop', ball.offsetTop);
+        } else {
+            renderDailyTxnsModal();
+            document.getElementById('dailyLogTitle').textContent = `Logs for ${formatDisplayDate(document.getElementById('date').value)}`;
+            document.getElementById('todayTxnModal').classList.remove('hidden');
+        }
+    };
 
-            ball.addEventListener('mousedown', onStart);
-            window.addEventListener('mousemove', onMove);
-            window.addEventListener('mouseup', onEnd);
-        })();
+    ball.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
+
+    ball.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+})();
+
 
         async function updatePendingCount() {
             if (!db) return;
