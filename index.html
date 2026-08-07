@@ -4377,16 +4377,46 @@
                     .catch(err => console.log('SW Registration Failed', err));
             });
         }
+// --- HANDLE PWA SHORTCUT LAUNCH URL PARAMETERS ---
+function handleShortcutLaunch() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    const action = urlParams.get('action');
 
-        // --- ON LOAD ---
-        window.onload = () => {
-            document.getElementById('date').value = getTodayIST();
-            fullReset();
-            loadPurposeMemory();
-            renderUpcomingRecurring();
-            setTimeout(checkRecurringTemplates, 500);
-            fetchLogsForDate(getTodayIST());
-        };
+    if (mode === 'biketaxi') {
+        setMode('biketaxi', true);
+    } else if (mode === 'selftransfer') {
+        setMode('selfTransfer', true);
+    } else if (mode === 'recurring') {
+        setMode('recurring', true);
+    } else if (mode === 'split') {
+        setMode('split', true);
+    }
+
+    if (action === 'queue') {
+        setTimeout(() => {
+            document.getElementById('queueModal').classList.remove('hidden');
+        }, 150);
+    } else if (action === 'templates') {
+        setTimeout(openTemplateManager, 150);
+    } else if (action === 'recurring_manager') {
+        setTimeout(openRecurringManager, 150);
+    }
+}
+
+// Update your window.onload function to include handleShortcutLaunch()
+window.onload = () => {
+    document.getElementById('date').value = getTodayIST();
+    fullReset();
+    loadPurposeMemory();
+    renderUpcomingRecurring();
+    setTimeout(checkRecurringTemplates, 500);
+    fetchLogsForDate(getTodayIST());
+    
+    // Process PWA shortcut parameters on app launch
+    handleShortcutLaunch();
+};
+
     </script>
 </body>
 </html>
