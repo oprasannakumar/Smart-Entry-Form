@@ -410,6 +410,111 @@
       pointer-events:auto !important;
       box-shadow:0 15px 40px rgba(0,0,0,0.25);
     }
+    /* ENFORCE STRICT HORIZONTAL CONTAINMENT */
+#todayTxnModal .confirm-card {
+  overflow-x: hidden !important;
+  width: 95%;
+  box-sizing: border-box;
+}
+
+#todayTxnList {
+  overflow-x: hidden !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.daily-txn-container {
+  overflow: hidden !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.daily-txn-content {
+  touch-action: pan-y; /* Prevents touch slop */
+  will-change: transform;
+}
+
+    /* INLINE LOG SEARCH & CATEGORY FILTER STYLES */
+.modal-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.modal-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.modal-search-wrapper .search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 13px;
+  color: var(--text-label);
+  pointer-events: none;
+}
+
+.modal-search-wrapper input {
+  height: 36px;
+  padding-left: 32px;
+  padding-right: 30px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-label);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-chips-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.category-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chip-btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-label);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  width: auto;
+  margin: 0;
+}
+
+.chip-btn.active {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
     .modal-content { background:var(--bg-card); color:var(--text-main); width:98%; max-width:850px; max-height:85vh; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--border-color); transition:background 0.5s ease; }
     .modal-content,.confirm-card { transform:scale(1) translateY(0); transition:transform 0.25s cubic-bezier(0.175,0.885,0.32,1.275); }
     .modal.hidden .modal-content,.modal.hidden .confirm-card { transform:scale(0.95) translateY(10px); }
@@ -507,6 +612,35 @@
       box-sizing:border-box;
     }
     #mathKeyboard.show { bottom:0; }
+    /* MATH KEYBOARD MEMORY & PERCENTAGE STYLES */
+.kb-mem-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.kb-key.mem-btn {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--purple);
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.3);
+  height: 42px;
+}
+.kb-mem-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--purple);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
     .kb-header { display:flex; margin-bottom:12px; padding:0 4px; }
     .kb-preview-wrapper { flex:1; background:var(--bg-input); border:1px solid var(--border-color); border-radius:8px; padding:8px 12px; font-size:18px; font-weight:bold; color:var(--text-main); text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .kb-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
@@ -851,23 +985,37 @@
         </div>
     </div>
 
-    <!-- Daily Transactions Log Modal -->
-    <div id="todayTxnModal" class="modal hidden">
-        <div class="confirm-card" style="max-width:95%;width:450px;padding:18px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:12px;">
-                <h3 id="dailyLogTitle" style="margin:0;font-size:15px;">Selected Date Log</h3>
-                <span style="cursor:pointer;font-size:18px;" onclick="document.getElementById('todayTxnModal').classList.add('hidden')">✕</span>
-            </div>
-            <div id="todayTxnList" style="max-height:75vh;overflow-y:auto;font-size:12px;padding-right:5px;overflow-x:hidden;"></div>
+<!-- Daily Transactions Log Modal with Search & Category Filter -->
+<div id="todayTxnModal" class="modal hidden">
+    <div class="confirm-card" style="max-width:95%;width:450px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:10px;">
+            <h3 id="dailyLogTitle" style="margin:0;font-size:15px;">Selected Date Log</h3>
+            <span style="cursor:pointer;font-size:18px;" onclick="document.getElementById('todayTxnModal').classList.add('hidden')">✕</span>
         </div>
+
+        <!-- Inline Search & Filter Toolbar -->
+        <div class="modal-filter-bar">
+            <div class="modal-search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="logSearchInput" placeholder="Search narration, account, amount..." autocomplete="off">
+                <button type="button" id="clearLogSearch" class="btn-clear-search hidden">✕</button>
+            </div>
+            <div id="logCategoryFilterContainer" class="category-chips-row">
+                <!-- Category chips generated dynamically in JS -->
+            </div>
+        </div>
+
+        <div id="todayTxnList" style="max-height:60vh;overflow-y:auto;font-size:12px;padding-right:5px;overflow-x:hidden;"></div>
     </div>
+</div>
+
 
     <!-- Transaction Details Modal -->
     <div id="dailyTxnDetailsModal" class="modal hidden">
-        <div class="confirm-card" style="max-width:90%;width:450px;padding:20px;">
+        <div class="confirm-card" style="max-width:95%;width:450px;padding:18px;">
             <div class="header-row-top" style="margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin:0; font-size:15px; text-align:left; grid-column:auto; grid-row:auto;">Transaction Details</h3>
-                <span style="cursor:pointer; font-size:18px; line-height:1; font-weight:bold;" onclick="document.getElementById('dailyTxnDetailsModal').classList.add('hidden')">✕</span>
+                <span style="cursor:pointer; font-size:18px; line-height:1; font-weight:bold;" onclick="closeTxnDetailsModal()">✕</span>
             </div>
             <div id="dailyTxnDetailsContent" style="font-size:13px;max-height:75vh;overflow-y:auto;padding-right:5px;"></div>
         </div>
@@ -967,17 +1115,30 @@
         </div>
     </div>
 
-    <!-- Math Keyboard -->
-    <div id="mathKeyboard">
-        <div class="kb-header"><div class="kb-preview-wrapper" id="kbPreview">0</div></div>
-        <div class="kb-grid">
-            <button class="kb-key" data-key="1">1</button><button class="kb-key" data-key="2">2</button><button class="kb-key" data-key="3">3</button><button class="kb-key op" data-key="/">÷</button>
-            <button class="kb-key" data-key="4">4</button><button class="kb-key" data-key="5">5</button><button class="kb-key" data-key="6">6</button><button class="kb-key op" data-key="*">×</button>
-            <button class="kb-key" data-key="7">7</button><button class="kb-key" data-key="8">8</button><button class="kb-key" data-key="9">9</button><button class="kb-key op" data-key="-">−</button>
-            <button class="kb-key" data-key=".">.</button><button class="kb-key" data-key="0">0</button><button class="kb-key action" data-key="del">⌫</button><button class="kb-key op" data-key="+">+</button>
-            <button class="kb-key" data-key="(">(</button><button class="kb-key" data-key=")">)</button><button class="kb-key action" data-key="clear">Clear</button><button class="kb-key eq" data-key="close">➔</button>
-        </div>
+    
+<div id="mathKeyboard">
+    <div class="kb-header">
+        <span id="kbMemBadge" class="kb-mem-badge hidden">M = <span id="kbMemVal">0</span></span>
+        <div class="kb-preview-wrapper" id="kbPreview">0</div>
     </div>
+    
+    <!-- Top Memory & Percentage Toolbar -->
+    <div class="kb-mem-row">
+        <button class="kb-key mem-btn" data-key="mc">MC</button>
+        <button class="kb-key mem-btn" data-key="mr">MR</button>
+        <button class="kb-key mem-btn" data-key="mplus">M+</button>
+        <button class="kb-key op" data-key="%">%</button>
+    </div>
+
+    <div class="kb-grid">
+        <button class="kb-key" data-key="1">1</button><button class="kb-key" data-key="2">2</button><button class="kb-key" data-key="3">3</button><button class="kb-key op" data-key="/">÷</button>
+        <button class="kb-key" data-key="4">4</button><button class="kb-key" data-key="5">5</button><button class="kb-key" data-key="6">6</button><button class="kb-key op" data-key="*">×</button>
+        <button class="kb-key" data-key="7">7</button><button class="kb-key" data-key="8">8</button><button class="kb-key" data-key="9">9</button><button class="kb-key op" data-key="-">−</button>
+        <button class="kb-key" data-key=".">.</button><button class="kb-key" data-key="0">0</button><button class="kb-key action" data-key="del">⌫</button><button class="kb-key op" data-key="+">+</button>
+        <button class="kb-key" data-key="(">(</button><button class="kb-key" data-key=")">)</button><button class="kb-key action" data-key="clear">Clear</button><button class="kb-key eq" data-key="close">➔</button>
+    </div>
+</div>
+
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtxq-LrJYu21QO07vBWWQrWhHtQ7hpkvYHeTsMAG0eAj3am6Tn0rryT5jDnRc-SwO-/exec";
@@ -1001,23 +1162,27 @@
         }
 
         // --- MATH EVALUATOR ---
-        window.evalMath = function(valStr) {
-            if (!valStr) return 0;
-            valStr = String(valStr).trim().replace(/^=/, '');
-            try {
-                let sanitized = valStr.replace(/[^0-9\.\+\-\*\/\(\)\%]/g, '');
-                if (!sanitized || /^[\+\-\*\/\.\(\)\%]+$/.test(sanitized)) return 0;
-                let res = Function("return " + sanitized)();
-                return isNaN(res) ? 0 : Number(res);
-            } catch (e) {
-                try {
-                    let fallback = valStr.replace(/[^0-9\.\+\-\*\/\(\)\%]/g, '').replace(/[\+\-\*\/\.\(\)]+$/, '');
-                    if (!fallback) return 0;
-                    let res = Function("return " + fallback)();
-                    return isNaN(res) ? 0 : Number(res);
-                } catch (e2) { return 0; }
-            }
-        };
+window.evalMath = function(valStr) {
+    if (!valStr) return 0;
+    valStr = String(valStr).trim().replace(/^=/, '');
+    try {
+        // Convert numbers attached to % (e.g. 500 * 10% -> 500 * (10/100))
+        let normalized = valStr.replace(/(\d+(\.\d+)?)%/g, '($1/100)');
+        let sanitized = normalized.replace(/[^0-9\.\+\-\*\/\(\)]/g, '');
+        if (!sanitized || /^[\+\-\*\/\.\(\)]+$/.test(sanitized)) return 0;
+        let res = Function("return " + sanitized)();
+        return isNaN(res) ? 0 : Number(res);
+    } catch (e) {
+        try {
+            let normalized = valStr.replace(/(\d+(\.\d+)?)%/g, '($1/100)');
+            let fallback = normalized.replace(/[^0-9\.\+\-\*\/\(\)]/g, '').replace(/[\+\-\*\/\.\(\)]+$/, '');
+            if (!fallback) return 0;
+            let res = Function("return " + fallback)();
+            return isNaN(res) ? 0 : Number(res);
+        } catch (e2) { return 0; }
+    }
+};
+
 
         // --- CUSTOM MATH KEYBOARD ---
         let activeMathInput = null;
@@ -1088,24 +1253,88 @@
             if (mathKeyboard.classList.contains('show')) { closeMathKeyboard(true); }
         });
 
-        const handleKbKey = (e) => {
-            e.preventDefault();
-            if (!activeMathInput) return;
-            let key = e.target.dataset.key;
-            if (!key && e.target.parentElement.dataset.key) key = e.target.parentElement.dataset.key;
-            if (!key) return;
-            if (key === 'close') { closeMathKeyboard(); return; }
-            let val = activeMathInput.value;
-            const operators = ['+', '-', '*', '/', '.'];
-            if (key === 'del') { val = val.slice(0, -1); } else if (key === 'clear') { val = ''; } else if (operators.includes(key)) {
-                if (val.length === 0 && key !== '-' && key !== '.') { return; }
-                const lastChar = val.slice(-1);
-                if (operators.includes(lastChar)) { val = val.slice(0, -1) + key; } else { val += key; }
-            } else { val += key; }
-            activeMathInput.value = val;
-            kbPreview.textContent = val || '0';
-            activeMathInput.dispatchEvent(new Event('input', { bubbles: true }));
-        };
+        
+let mathMemory = 0;
+
+function updateMemoryBadge() {
+    const badge = document.getElementById('kbMemBadge');
+    const valSpan = document.getElementById('kbMemVal');
+    if (badge && valSpan) {
+        if (mathMemory !== 0) {
+            valSpan.textContent = mathMemory.toFixed(2);
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+}
+
+const handleKbKey = (e) => {
+    e.preventDefault();
+    if (!activeMathInput) return;
+    let key = e.target.dataset.key;
+    if (!key && e.target.parentElement.dataset.key) key = e.target.parentElement.dataset.key;
+    if (!key) return;
+
+    if (key === 'close') { closeMathKeyboard(); return; }
+
+    let val = activeMathInput.value;
+    const operators = ['+', '-', '*', '/', '.', '%'];
+
+    // --- Memory Operations ---
+    if (key === 'mplus') {
+        const currentVal = window.evalMath(val);
+        if (currentVal !== 0) {
+            mathMemory += currentVal;
+            updateMemoryBadge();
+            showToast(`M+ Added: ₹${currentVal.toFixed(2)}`);
+        }
+        return;
+    }
+    if (key === 'mr') {
+        val = mathMemory !== 0 ? String(mathMemory.toFixed(2)) : '0';
+        activeMathInput.value = val;
+        kbPreview.textContent = val;
+        activeMathInput.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+    }
+    if (key === 'mc') {
+        mathMemory = 0;
+        updateMemoryBadge();
+        showToast('Memory Cleared');
+        return;
+    }
+
+    // --- Standard Input Operations ---
+    if (key === 'del') { 
+        val = val.slice(0, -1); 
+    } else if (key === 'clear') { 
+        val = ''; 
+    } else if (operators.includes(key)) {
+        if (val.length === 0 && key !== '-' && key !== '.') return;
+        const lastChar = val.slice(-1);
+        if (operators.includes(lastChar)) { 
+            val = val.slice(0, -1) + key; 
+        } else { 
+            val += key; 
+        }
+    } else { 
+        val += key; 
+    }
+
+    activeMathInput.value = val;
+    kbPreview.textContent = val || '0';
+    activeMathInput.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+// Re-bind click/touch listeners for all keypad buttons (including memory keys)
+document.querySelectorAll('#mathKeyboard .kb-key').forEach(btn => {
+    btn.removeEventListener('mousedown', handleKbKey);
+    btn.removeEventListener('touchstart', handleKbKey);
+    btn.addEventListener('mousedown', handleKbKey);
+    btn.addEventListener('touchstart', handleKbKey, { passive: false });
+});
+
         document.querySelectorAll('.kb-key').forEach(btn => {
             btn.addEventListener('mousedown', handleKbKey);
             btn.addEventListener('touchstart', handleKbKey, { passive: false });
@@ -1646,116 +1875,226 @@
             showToast("✏️ Editing log #" + id);
         };
 
-        window.viewDailyTxnDetails = function(id) {
-            const data = getDailyTxns();
-            const txn = data.txns.find(t => t.id === id);
-            if (txn && txn.fullHtml) {
-                document.getElementById('dailyTxnDetailsContent').innerHTML = txn.fullHtml;
-                document.getElementById('dailyTxnDetailsModal').classList.remove('hidden');
-            }
-        };
+window.viewDailyTxnDetails = function(id) {
+    const data = getDailyTxns();
+    const txn = data.txns.find(t => t.id === id);
+    if (txn && txn.fullHtml) {
+        document.getElementById('dailyTxnDetailsContent').innerHTML = txn.fullHtml;
+        
+        // Hide Daily Log modal and open Details modal
+        document.getElementById('todayTxnModal').classList.add('hidden');
+        document.getElementById('dailyTxnDetailsModal').classList.remove('hidden');
+    }
+};
 
-        function renderDailyTxnsModal() {
-            const data = getDailyTxns();
-            const listDiv = document.getElementById('todayTxnList');
-            listDiv.innerHTML = '';
-            if (isLoadingLogs) {
-                listDiv.innerHTML = `
-                    <div class="empty-state">
-                        <div class="spinner"></div>
-                        <span style="font-size:12px;font-weight:600;color:var(--text-label);">Fetching transactions...</span>
-                    </div>
-                `;
-                return;
-            }
-            if (data.txns.length === 0) {
-                listDiv.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📭</div>
-                        <span style="font-size:13px;font-weight:600;color:var(--text-main);">No transactions found</span>
-                        <span style="font-size:11px;color:var(--text-label);">Entries logged for this date will appear here.</span>
-                    </div>
-                `;
-                return;
-            }
-            const sorted = [...data.txns].reverse();
-            sorted.forEach(t => {
-                const isSelf = t.formState && t.formState.self_transfer;
-                const color = isSelf ? 'var(--self-transfer)' : (t.flow === 'withdraw' ? 'var(--danger)' : 'var(--primary)');
-                const formattedAmount = Number(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                const wrapper = document.createElement('div');
-                wrapper.className = 'daily-txn-container';
-                wrapper.innerHTML = `
-                  <div style="position: absolute; left: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;">
-                    <span style="font-size: 18px;" title="Delete">🗑️</span>
-                  </div>
-                  <div style="position: absolute; right: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;">
-                    <span style="font-size: 18px;" title="Edit">✏️</span>
-                  </div>
-                  <div class="daily-txn-content" title="Tap to view details">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
-                      <div style="flex:1;min-width:0;">
-                        <strong style="color:var(--text-main);">${t.narration}</strong><br>
-                        <span style="color:var(--text-label);font-size:10px;">${t.details}</span>
-                      </div>
-                      <div style="font-weight:700;color:${color};padding-left:8px;flex-shrink:0;">
-                        ₹${formattedAmount}
-                      </div>
-                    </div>
-                  </div>
-                `;
-                listDiv.appendChild(wrapper);
+window.closeTxnDetailsModal = function() {
+    // Hide Details modal and reopen Daily Log modal
+    document.getElementById('dailyTxnDetailsModal').classList.add('hidden');
+    document.getElementById('todayTxnModal').classList.remove('hidden');
+};
 
-                const content = wrapper.querySelector('.daily-txn-content');
-               
-                let startX = 0, currentX = 0, isDragging = false, hasDragged = false;
-                function onStart(x) { 
-                    startX = x; isDragging = true; hasDragged = false; currentX = 0; content.style.transition = 'none'; 
-                }
-                function onMove(x) { 
-                    if (!isDragging) return; 
-                    currentX = x - startX; 
-                    if (Math.abs(currentX) > 5) hasDragged = true; 
-                    if (currentX > 90) currentX = 90; 
-                    if (currentX < -90) currentX = -90; 
-                    content.style.transform = `translateX(${currentX}px)`; 
-                }
-                function onEnd() { 
-                    if (!isDragging) return; 
-                    isDragging = false; 
-                    content.style.transition = 'transform 0.25s ease'; 
-                    if (currentX > 50) { 
-                        content.style.transform = 'translateX(0)'; 
-                        removeDailyTxn(t.id);
-                    } else if (currentX < -50) { 
-                        content.style.transform = 'translateX(0)'; 
-                        editDailyTxn(t.id);
-                    } else { 
-                        content.style.transform = 'translateX(0)'; 
-                    } 
-                    window.removeEventListener('mousemove', handleMouseMove); 
-                    window.removeEventListener('mouseup', handleMouseUp); 
-                }
-               
-                content.addEventListener('touchstart', e => onStart(e.touches[0].clientX), {passive: true});
-                content.addEventListener('touchmove', e => onMove(e.touches[0].clientX), {passive: true});
-                content.addEventListener('touchend', onEnd);
-               
-                const handleMouseMove = e => { if (isDragging) onMove(e.clientX); };
-                const handleMouseUp = () => { if (isDragging) onEnd(); };
-               
-                content.addEventListener('mousedown', e => { 
-                    onStart(e.clientX); 
-                    window.addEventListener('mousemove', handleMouseMove); 
-                    window.addEventListener('mouseup', handleMouseUp); 
-                });
-               
-                content.addEventListener('click', e => { 
-                    if (hasDragged) { e.preventDefault(); e.stopPropagation(); return; } 
-                    viewDailyTxnDetails(t.id); 
-                });
-            });
+
+        // --- LOG FILTERING STATE & RENDER LOGIC ---
+let activeLogCategory = 'All';
+let logSearchQuery = '';
+
+function renderCategoryChips(txns) {
+    const chipsContainer = document.getElementById('logCategoryFilterContainer');
+    if (!chipsContainer) return;
+
+    // Collect unique categories present in the current date's transactions
+    const categoriesSet = new Set(['All']);
+    txns.forEach(t => {
+        if (t.formState && t.formState.self_transfer) {
+            categoriesSet.add('Self Transfer');
+        } else if (t.formState && t.formState.purpose) {
+            categoriesSet.add(t.formState.purpose);
+        } else if (t.flow) {
+            categoriesSet.add(t.flow === 'withdraw' ? 'Expense' : 'Income');
         }
+    });
+
+    const categories = Array.from(categoriesSet);
+    chipsContainer.innerHTML = '';
+
+    categories.forEach(cat => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `chip-btn ${cat === activeLogCategory ? 'active' : ''}`;
+        chip.textContent = cat;
+        chip.onclick = () => {
+            activeLogCategory = cat;
+            renderDailyTxnsModal();
+        };
+        chipsContainer.appendChild(chip);
+    });
+}
+
+function renderDailyTxnsModal() {
+    const data = getDailyTxns();
+    const listDiv = document.getElementById('todayTxnList');
+    listDiv.innerHTML = '';
+
+    if (isLoadingLogs) {
+        listDiv.innerHTML = `
+            <div class="empty-state">
+                <div class="spinner"></div>
+                <span style="font-size:12px;font-weight:600;color:var(--text-label);">Fetching transactions...</span>
+            </div>
+        `;
+        return;
+    }
+
+    if (data.txns.length === 0) {
+        listDiv.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <span style="font-size:13px;font-weight:600;color:var(--text-main);">No transactions found</span>
+                <span style="font-size:11px;color:var(--text-label);">Entries logged for this date will appear here.</span>
+            </div>
+        `;
+        return;
+    }
+
+    // Render filter category chips dynamically
+    renderCategoryChips(data.txns);
+
+    // Apply Filter & Search logic
+    const filteredTxns = data.txns.filter(t => {
+        const fs = t.formState || {};
+        const isSelfTransfer = fs.self_transfer;
+        const purpose = fs.purpose || '';
+
+        // Category Filter Match
+        let matchesCategory = true;
+        if (activeLogCategory !== 'All') {
+            if (activeLogCategory === 'Self Transfer') matchesCategory = isSelfTransfer;
+            else if (activeLogCategory === 'Expense') matchesCategory = t.flow === 'withdraw' && !isSelfTransfer;
+            else if (activeLogCategory === 'Income') matchesCategory = t.flow === 'deposit' && !isSelfTransfer;
+            else matchesCategory = purpose.toLowerCase() === activeLogCategory.toLowerCase();
+        }
+
+        // Text Search Match (Narration, Details, Amount, Ref)
+        let matchesSearch = true;
+        if (logSearchQuery.trim() !== '') {
+            const query = logSearchQuery.toLowerCase();
+            const narration = (t.narration || '').toLowerCase();
+            const details = (t.details || '').toLowerCase();
+            const amount = String(t.amount || '');
+            const ref = (t.ref || '').toLowerCase();
+            matchesSearch = narration.includes(query) || details.includes(query) || amount.includes(query) || ref.includes(query);
+        }
+
+        return matchesCategory && matchesSearch;
+    });
+
+    if (filteredTxns.length === 0) {
+        listDiv.innerHTML = `
+            <div class="empty-state" style="padding:15px;">
+                <div class="empty-icon" style="font-size:24px;">🔍</div>
+                <span style="font-size:12px;font-weight:600;color:var(--text-main);">No matching entries</span>
+                <span style="font-size:10px;color:var(--text-label);">Try adjusting your search or category filter.</span>
+            </div>
+        `;
+        return;
+    }
+
+    const sorted = [...filteredTxns].reverse();
+    sorted.forEach(t => {
+        const isSelf = t.formState && t.formState.self_transfer;
+        const color = isSelf ? 'var(--self-transfer)' : (t.flow === 'withdraw' ? 'var(--danger)' : 'var(--primary)');
+        const formattedAmount = Number(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const wrapper = document.createElement('div');
+        wrapper.className = 'daily-txn-container';
+        wrapper.innerHTML = `
+          <div style="position: absolute; left: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;">
+            <span style="font-size: 18px;" title="Delete">🗑️</span>
+          </div>
+          <div style="position: absolute; right: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;">
+            <span style="font-size: 18px;" title="Edit">✏️</span>
+          </div>
+          <div class="daily-txn-content" title="Tap to view details">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
+              <div style="flex:1;min-width:0;">
+                <strong style="color:var(--text-main);">${t.narration}</strong><br>
+                <span style="color:var(--text-label);font-size:10px;">${t.details}</span>
+              </div>
+              <div style="font-weight:700;color:${color};padding-left:8px;flex-shrink:0;">
+                ₹${formattedAmount}
+              </div>
+            </div>
+          </div>
+        `;
+        listDiv.appendChild(wrapper);
+
+        const content = wrapper.querySelector('.daily-txn-content');
+        let startX = 0, currentX = 0, isDragging = false, hasDragged = false;
+        
+        function onStart(x) { 
+            startX = x; isDragging = true; hasDragged = false; currentX = 0; content.style.transition = 'none'; 
+        }
+        function onMove(x) { 
+            if (!isDragging) return; 
+            currentX = x - startX; 
+            if (Math.abs(currentX) > 5) hasDragged = true; 
+            if (currentX > 90) currentX = 90; 
+            if (currentX < -90) currentX = -90; 
+            content.style.transform = `translateX(${currentX}px)`; 
+        }
+        function onEnd() { 
+            if (!isDragging) return; 
+            isDragging = false; 
+            content.style.transition = 'transform 0.25s ease'; 
+            if (currentX > 50) { 
+                content.style.transform = 'translateX(0)'; 
+                removeDailyTxn(t.id);
+            } else if (currentX < -50) { 
+                content.style.transform = 'translateX(0)'; 
+                editDailyTxn(t.id);
+            } else { 
+                content.style.transform = 'translateX(0)'; 
+            } 
+            window.removeEventListener('mousemove', handleMouseMove); 
+            window.removeEventListener('mouseup', handleMouseUp); 
+        }
+
+        content.addEventListener('touchstart', e => onStart(e.touches[0].clientX), {passive: true});
+        content.addEventListener('touchmove', e => onMove(e.touches[0].clientX), {passive: true});
+        content.addEventListener('touchend', onEnd);
+
+        const handleMouseMove = e => { if (isDragging) onMove(e.clientX); };
+        const handleMouseUp = () => { if (isDragging) onEnd(); };
+
+        content.addEventListener('mousedown', e => { 
+            onStart(e.clientX); 
+            window.addEventListener('mousemove', handleMouseMove); 
+            window.addEventListener('mouseup', handleMouseUp); 
+        });
+
+        content.addEventListener('click', e => { 
+            if (hasDragged) { e.preventDefault(); e.stopPropagation(); return; } 
+            viewDailyTxnDetails(t.id); 
+        });
+    });
+}
+
+// --- SEARCH INPUT EVENT LISTENERS ---
+document.getElementById('logSearchInput').addEventListener('input', function(e) {
+    logSearchQuery = e.target.value;
+    const clearBtn = document.getElementById('clearLogSearch');
+    if (logSearchQuery.length > 0) clearBtn.classList.remove('hidden');
+    else clearBtn.classList.add('hidden');
+    renderDailyTxnsModal();
+});
+
+document.getElementById('clearLogSearch').addEventListener('click', function() {
+    const input = document.getElementById('logSearchInput');
+    input.value = '';
+    logSearchQuery = '';
+    this.classList.add('hidden');
+    renderDailyTxnsModal();
+});
+
 
         (function setupDraggableBall() {
     const ball = document.getElementById('dragDashBall');
@@ -4377,46 +4716,16 @@
                     .catch(err => console.log('SW Registration Failed', err));
             });
         }
-// --- HANDLE PWA SHORTCUT LAUNCH URL PARAMETERS ---
-function handleShortcutLaunch() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const mode = urlParams.get('mode');
-    const action = urlParams.get('action');
 
-    if (mode === 'biketaxi') {
-        setMode('biketaxi', true);
-    } else if (mode === 'selftransfer') {
-        setMode('selfTransfer', true);
-    } else if (mode === 'recurring') {
-        setMode('recurring', true);
-    } else if (mode === 'split') {
-        setMode('split', true);
-    }
-
-    if (action === 'queue') {
-        setTimeout(() => {
-            document.getElementById('queueModal').classList.remove('hidden');
-        }, 150);
-    } else if (action === 'templates') {
-        setTimeout(openTemplateManager, 150);
-    } else if (action === 'recurring_manager') {
-        setTimeout(openRecurringManager, 150);
-    }
-}
-
-// Update your window.onload function to include handleShortcutLaunch()
-window.onload = () => {
-    document.getElementById('date').value = getTodayIST();
-    fullReset();
-    loadPurposeMemory();
-    renderUpcomingRecurring();
-    setTimeout(checkRecurringTemplates, 500);
-    fetchLogsForDate(getTodayIST());
-    
-    // Process PWA shortcut parameters on app launch
-    handleShortcutLaunch();
-};
-
+        // --- ON LOAD ---
+        window.onload = () => {
+            document.getElementById('date').value = getTodayIST();
+            fullReset();
+            loadPurposeMemory();
+            renderUpcomingRecurring();
+            setTimeout(checkRecurringTemplates, 500);
+            fetchLogsForDate(getTodayIST());
+        };
     </script>
 </body>
 </html>
