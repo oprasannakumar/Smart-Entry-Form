@@ -809,6 +809,17 @@
                 <input type="text" id="reference" placeholder="">
             </div>
         </div>
+<!-- BIKE TAXI TRIP COUNTER TOOLBAR -->
+<div id="biketaxiTripToolbar" class="hidden" style="margin-bottom: 8px; background: rgba(234,179,8,0.1); border: 1px solid #eab308; border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:12px; font-weight:700; color:#eab308;">🏍️ Trip:</span>
+        <strong id="biketaxiTripBadge" style="font-size:13px; color:var(--text-main);">#1</strong>
+    </div>
+    <div style="display:flex; gap:6px;">
+        <button type="button" id="btnNextTrip" style="width:auto; height:26px; padding:0 10px; font-size:11px; font-weight:700; background:#eab308; color:#000; border:none; border-radius:6px; cursor:pointer;">+1 Next Trip</button>
+        <button type="button" id="btnResetShift" style="width:auto; height:26px; padding:0 8px; font-size:11px; font-weight:600; background:transparent; color:var(--text-label); border:1px solid var(--border-color); border-radius:6px; cursor:pointer;">Reset</button>
+    </div>
+</div>
 
         <div style="margin-bottom: 14px;">
             <label style="margin-top:0;">Narration</label>
@@ -1425,6 +1436,15 @@ document.querySelectorAll('#mathKeyboard .kb-key').forEach(btn => {
         document.getElementById('recurringModeBtn').addEventListener('click', () => setMode('recurring', !recurringMode));
         document.getElementById('splitModeBtn').addEventListener('click', () => setMode('split', !splitMode));
         document.getElementById('selfTransferBtn').addEventListener('click', () => setMode('selfTransfer', !selfTransferMode));
+// --- AUTO-INCREMENT TRIP COUNTER ON SUBMIT ---
+function handleBikeTaxiTripIncrement() {
+    if (bikeTaxiMode) {
+        bikeTaxiTripCount++;
+        localStorage.setItem('biketaxi_trip_count', bikeTaxiTripCount);
+        updateTripCounterUI();
+        applyTripNarration();
+    }
+}
 
         function setMode(mode, state) {
             if (document.activeElement) document.activeElement.blur();
@@ -3108,6 +3128,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             });
         }
         showToast("✔ Transaction Saved");
+        handleBikeTaxiTripIncrement();
         updateRecurringNextDate();
         const currentDate = document.getElementById('date').value || getTodayIST();
         await fetchLogsForDate(currentDate);
@@ -3268,6 +3289,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
     window.currentPayloads.forEach(body => store.add(body));
     tx.oncomplete = () => {
         updatePendingCount();
+        handleBikeTaxiTripIncrement();
         showToast(batchMode ? "📦 Added to Batch Queue" : "📦 Saved Offline");
         
         window.currentSaveStats = null;
@@ -3310,6 +3332,57 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 narrationInput.value = text + " - BIKETAXI";
             }
         }
+// --- BIKE TAXI TRIP COUNTER STATE ---
+let bikeTaxiTripCount = parseInt(localStorage.getItem('biketaxi_trip_count') || '1', 10);
+
+function updateTripCounterUI() {
+    const toolbar = document.getElementById('biketaxiTripToolbar');
+    const badge = document.getElementById('biketaxiTripBadge');
+    if (bikeTaxiMode) {
+        toolbar.classList.remove('hidden');
+        badge.textContent = `#${bikeTaxiTripCount}`;
+    } else {
+        toolbar.classList.add('hidden');
+    }
+}
+
+function applyTripNarration() {
+    const narrationInp = document.getElementById('narration');
+    let text = narrationInp.value.trim();
+    
+    // Clean old Trip tags if present
+    text = text.replace(/-\s*Trip\s*#\d+/gi, '').replace(/null/gi, '').trim();
+    if (!text || text.toUpperCase() === "BIKETAXI") text = "BIKETAXI";
+    
+    narrationInp.value = `${text} - Trip #${bikeTaxiTripCount}`;
+}
+
+document.getElementById('btnNextTrip').onclick = () => {
+    bikeTaxiTripCount++;
+    localStorage.setItem('biketaxi_trip_count', bikeTaxiTripCount);
+    updateTripCounterUI();
+    applyTripNarration();
+    showToast(`🏍️ Trip #${bikeTaxiTripCount} Set`);
+};
+
+document.getElementById('btnResetShift').onclick = async () => {
+    const ok = await showConfirm("Reset shift trip counter back to #1?");
+    if (ok) {
+        bikeTaxiTripCount = 1;
+        localStorage.setItem('biketaxi_trip_count', '1');
+        updateTripCounterUI();
+        applyTripNarration();
+        showToast("Trip Counter Reset to #1");
+    }
+};
+
+// Hook into setMode to toggle toolbar
+const originalSetMode = setMode;
+setMode = function(mode, state) {
+    originalSetMode(mode, state);
+    updateTripCounterUI();
+    if (bikeTaxiMode) applyTripNarration();
+};
 
         function applyAutoFill(text) {
             const getVal = (key) => { const regex = new RegExp(`${key}:\\s*(.*)`, 'i');
@@ -3405,8 +3478,8 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
         function fullReset(keepModes) {
     document.getElementById('txnForm').reset();
     setRefPlaceholder();
-
     bikeTaxiMode = false;
+    if (typeof updateTripCounterUI === 'function') updateTripCounterUI();
     if (!keepModes) {
         batchMode = false;
         recurringMode = false;
