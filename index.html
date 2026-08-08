@@ -3670,78 +3670,176 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             const store = tx.objectStore(STORE_NAME);
             store.getAllKeys().onsuccess = (e) => { store.delete(e.target.result[idx]).onsuccess = () => updatePendingCount(); }; };
 
-        window.editQueue = (idx) => {
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            const store = tx.objectStore(STORE_NAME);
-            store.getAll().onsuccess = (e) => {
-                const item = e.target.result[idx];
-                let isSelfTransfer = false;
-                let parsedObj = null;
+window.editQueue = (idx) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    
+    store.getAll().onsuccess = (e) => {
+        const allItems = e.target.result;
+        const targetItem = allItems[idx];
+        if (!targetItem) return;
+
+        store.getAllKeys().onsuccess = (ev) => {
+            const allKeys = ev.target.result;
+            
+            // Helper function to safely parse Queue items (URLSearchParams or JSON)
+            function parseQueueItem(str) {
                 try {
-                    parsedObj = JSON.parse(item);
-                    if (parsedObj.refid && parsedObj.denoms) isSelfTransfer = true;
-                } catch(e) {}
+                    const json = JSON.parse(str);
+                    if (typeof json === 'object' && json !== null) return { isJson: true, data: json };
+                } catch(err) {}
+                
+                const params = new URLSearchParams(str);
+                const obj = {};
+                for (let [k, v] of params.entries()) {
+                    obj[k] = v;
+                }
+                return { isJson: false, data: obj, params: params };
+            }
 
-                if (isSelfTransfer) {
-                    setMode('selfTransfer', true);
-                    document.getElementById('date').value = parsedObj.date;
-                    document.getElementById('narration').value = parsedObj.narration.replace(/ \((From|To)\)/g, '');
-                    if (parsedObj.refid) document.getElementById('reference').value = parsedObj.refid;
+            const parsedTarget = parseQueueItem(targetItem).data;
+            const targetRef = parsedTarget.reference || parsedTarget.refid || parsedTarget.refId;
+            const isSelfTransfer = parsedTarget.category === 'self transfer' || 
+                                   parsedTarget.action === 'selfTransfer' || 
+                                   parsedTarget.self_transfer ||
+                                   (parsedTarget.narration && (parsedTarget.narration.includes('(From)') || parsedTarget.narration.includes('(To)')));
 
-                    document.getElementById('stSourcesContainer').innerHTML = '';
-                    document.getElementById('stDestContainer').innerHTML = '';
-                    createStRow(parsedObj.narration.includes('(From)') ? 'stSourcesContainer' : 'stDestContainer', {
-                        type: parsedObj.type,
-                        account: parsedObj.account,
-                        amount: parsedObj.amount,
-                        denominations: parsedObj.denoms
-                    });
-                    window.calcStTotals();
-                } else {
-                    const p = new URLSearchParams(item);
-                    const isSplit = p.get('split_enabled') === '1';
-                    document.getElementById('paymentContainer').innerHTML = "";
-                    document.getElementById('date').value = p.get('date');
-                    document.getElementById('narration').value = p.get('narration');
-                    document.getElementById('invoice_no').value = p.get('invoice_no') || "";
-                    if (p.get('reference')) { document.getElementById('reference').value = p.get('reference'); }
-                   
-                    setSelectOrOther(document.getElementById('purpose'), document.getElementById('purpose_other'), 'purposeSmartRow', p.get('purpose'));
-                    setSelectOrOther(document.getElementById('spent_for'), document.getElementById('spent_for_other'), 'spentSmartRow', p.get('spent_for'));
-                   
-                    document.getElementById('flow').value = p.get('flow');
+            if (isSelfTransfer && targetRef) {
+                // Find all matching leg entries in the queue that share this Reference ID
+                const matchedIndices = [];
+                const sources = [];
+                const destinations = [];
+                let baseDate = parsedTarget.date;
+                let baseNarration = (parsedTarget.narration || '').replace(/ \((From|To)\)/gi, '').trim();
 
-                    if (isSplit) {
-                        setMode('split', true);
-                        const personalShare = parseFloat(p.get('personal_share') || 0);
-                        if (personalShare > 0) {
-                            if (!document.getElementById('personalShareWrapper')) { window.restorePersonalShare(); }
-                            const ps = document.getElementById('personalShare');
-                            if (ps) ps.value = personalShare;
-                        } else {
-                            const psWrapper = document.getElementById('personalShareWrapper');
-                            if (psWrapper) psWrapper.remove();
+                allItems.forEach((item, itemIdx) => {
+                    const pData = parseQueueItem(item).data;
+                    const itemRef = pData.reference || pData.refid || pData.refId;
+                    const itemIsST = pData.category === 'self transfer' || 
+                                     pData.action === 'selfTransfer' || 
+                                     pData.self_transfer ||
+                                     (pData.narration && (pData.narration.includes('(From)') || pData.narration.includes('(To)')));
+
+                    if (itemIsST && itemRef === targetRef) {
+                        matchedIndices.push(itemIdx);
+
+                        // Extract cash denominations if present
+                        let denoms = null;
+                        if (pData.denominations) denoms = pData.denominations;
+                        else if (pData.denoms) denoms = pData.denoms;
+                        else {
+                            const dObj = {};
+                            [500, 200, 100, 50, 20, 10, 5, 2, 1].forEach(v => {
+                                if (pData['d' + v]) dObj[v] = pData['d' + v];
+                            });
+                            denoms = dObj;
                         }
-                        const recipients = JSON.parse(p.get('recipients') || '[]');
-                        const recipientsContainer = document.getElementById('recipientsContainer');
-                        recipientsContainer.innerHTML = '';
-                        recipients.forEach(rec => { if (typeof window.addRecipientRow === 'function') window.addRecipientRow(rec.name, rec.amount); });
-                        const payments = JSON.parse(p.get('payments') || '[]');
-                        payments.forEach(pmt => {
-                            createPaymentRow({ type: pmt.type, acc: pmt.account, amt: pmt.amount, denominations: pmt.denominations });
-                        });
-                    } else {
-                        const amt = p.get('flow') === 'withdraw' ? p.get('withdrawn') : p.get('deposit');
-                        createPaymentRow({ type: p.get('trtype'), acc: p.get('from_to'), amt: amt });
+
+                        const legType = pData.trtype || pData.type || 'Debit';
+                        const legAccount = pData.from_to || pData.account || '';
+                        const legAmt = parseFloat(pData.amount || pData.withdrawn || pData.deposit || 0);
+                        const isFrom = (pData.narration && pData.narration.includes('(From)')) || pData.flow === 'withdraw';
+
+                        const legObj = {
+                            type: legType,
+                            account: legAccount,
+                            amount: legAmt,
+                            denominations: denoms
+                        };
+
+                        if (isFrom) sources.push(legObj);
+                        else destinations.push(legObj);
                     }
-                    updateGrandTotal();
+                });
+
+                // Activate Self Transfer mode and load into form
+                setMode('selfTransfer', true);
+                document.getElementById('date').value = baseDate || getTodayIST();
+                document.getElementById('narration').value = baseNarration;
+                document.getElementById('reference').value = targetRef;
+
+                document.getElementById('stSourcesContainer').innerHTML = '';
+                document.getElementById('stDestContainer').innerHTML = '';
+
+                if (sources.length > 0) {
+                    sources.forEach(s => createStRow('stSourcesContainer', s));
+                } else {
+                    createStRow('stSourcesContainer');
                 }
 
-                store.getAllKeys().onsuccess = (ev) => {
-                    store.delete(ev.target.result[idx]).onsuccess = () => { updatePendingCount(); document.getElementById('queueModal').classList.add('hidden'); };
+                if (destinations.length > 0) {
+                    destinations.forEach(d => createStRow('stDestContainer', d));
+                } else {
+                    createStRow('stDestContainer');
+                }
+
+                window.calcStTotals();
+
+                // Delete ALL associated legs from IndexedDB queue
+                const delTx = db.transaction(STORE_NAME, "readwrite");
+                const delStore = delTx.objectStore(STORE_NAME);
+                matchedIndices.forEach(mIdx => {
+                    delStore.delete(allKeys[mIdx]);
+                });
+                delTx.oncomplete = () => {
+                    updatePendingCount();
+                    document.getElementById('queueModal').classList.add('hidden');
+                    showToast("✏️ Self Transfer loaded for editing");
                 };
-            };
+
+            } else {
+                // Standard Transaction Item Editing
+                const p = new URLSearchParams(targetItem);
+                const isSplit = p.get('split_enabled') === '1';
+                document.getElementById('paymentContainer').innerHTML = "";
+                document.getElementById('date').value = p.get('date') || getTodayIST();
+                document.getElementById('narration').value = p.get('narration') || '';
+                document.getElementById('invoice_no').value = p.get('invoice_no') || "";
+                if (p.get('reference')) { document.getElementById('reference').value = p.get('reference'); }
+               
+                setSelectOrOther(document.getElementById('purpose'), document.getElementById('purpose_other'), 'purposeSmartRow', p.get('purpose'));
+                setSelectOrOther(document.getElementById('spent_for'), document.getElementById('spent_for_other'), 'spentSmartRow', p.get('spent_for'));
+               
+                document.getElementById('flow').value = p.get('flow');
+
+                if (isSplit) {
+                    setMode('split', true);
+                    const personalShare = parseFloat(p.get('personal_share') || 0);
+                    if (personalShare > 0) {
+                        if (!document.getElementById('personalShareWrapper')) { window.restorePersonalShare(); }
+                        const ps = document.getElementById('personalShare');
+                        if (ps) ps.value = personalShare;
+                    } else {
+                        const psWrapper = document.getElementById('personalShareWrapper');
+                        if (psWrapper) psWrapper.remove();
+                    }
+                    const recipients = JSON.parse(p.get('recipients') || '[]');
+                    const recipientsContainer = document.getElementById('recipientsContainer');
+                    recipientsContainer.innerHTML = '';
+                    recipients.forEach(rec => { if (typeof window.addRecipientRow === 'function') window.addRecipientRow(rec.name, rec.amount); });
+                    const payments = JSON.parse(p.get('payments') || '[]');
+                    payments.forEach(pmt => {
+                        createPaymentRow({ type: pmt.type, acc: pmt.account, amt: pmt.amount, denominations: pmt.denominations });
+                    });
+                } else {
+                    const amt = p.get('flow') === 'withdraw' ? p.get('withdrawn') : p.get('deposit');
+                    createPaymentRow({ type: p.get('trtype'), acc: p.get('from_to'), amt: amt });
+                }
+                updateGrandTotal();
+
+                // Delete single item from IndexedDB queue
+                const delTx = db.transaction(STORE_NAME, "readwrite");
+                const delStore = delTx.objectStore(STORE_NAME);
+                delStore.delete(allKeys[idx]).onsuccess = () => {
+                    updatePendingCount();
+                    document.getElementById('queueModal').classList.add('hidden');
+                    showToast("✏️ Transaction loaded for editing");
+                };
+            }
         };
+    };
+};
+
 
         function renderRecurringTemplates() {
             const list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
