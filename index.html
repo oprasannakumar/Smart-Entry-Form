@@ -401,11 +401,18 @@
       visibility:hidden !important;
       pointer-events:none !important;
     }
-    #todayTxnModal,#dailyTxnDetailsModal,#editCompareModal {
-      background:transparent !important;
-      backdrop-filter: none;
-      pointer-events:none !important;
-    }
+#todayTxnModal,#editCompareModal {
+  background:transparent !important;
+  backdrop-filter: none;
+  pointer-events:none !important;
+}
+
+#dailyTxnDetailsModal {
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(2px);
+  pointer-events: auto !important;
+}
+
     #todayTxnModal .confirm-card,#dailyTxnDetailsModal .confirm-card,#editCompareModal .confirm-card {
       pointer-events:auto !important;
       box-shadow:0 15px 40px rgba(0,0,0,0.25);
@@ -1447,23 +1454,35 @@ document.querySelectorAll('#mathKeyboard .kb-key').forEach(btn => {
         }
 
         function toggleSelfTransferUI(isActive) {
-            document.getElementById('receiptFlexGroup').classList.toggle('hidden', isActive);
-            document.getElementById('flowInvoiceRow').classList.toggle('hidden', isActive);
-            document.getElementById('purposeGroup').classList.toggle('hidden', isActive);
-            document.getElementById('spentForGroup').classList.toggle('hidden', isActive);
-            document.getElementById('standardPaymentHeader').classList.toggle('hidden', isActive);
-            document.getElementById('paymentContainer').classList.toggle('hidden', isActive);
-            document.getElementById('totalWrapper').classList.toggle('hidden', isActive);
-            document.getElementById('selfTransferPanel').style.display = isActive ? 'block' : 'none';
+    document.getElementById('receiptFlexGroup').classList.toggle('hidden', isActive);
+    document.getElementById('flowInvoiceRow').classList.toggle('hidden', isActive);
+    document.getElementById('purposeGroup').classList.toggle('hidden', isActive);
+    document.getElementById('spentForGroup').classList.toggle('hidden', isActive);
+    document.getElementById('standardPaymentHeader').classList.toggle('hidden', isActive);
+    document.getElementById('paymentContainer').classList.toggle('hidden', isActive);
+    document.getElementById('totalWrapper').classList.toggle('hidden', isActive);
+    document.getElementById('selfTransferPanel').style.display = isActive ? 'block' : 'none';
 
-            if (isActive) {
-                const src = document.getElementById('stSourcesContainer');
-                const dst = document.getElementById('stDestContainer');
-                if (!src.children.length) createStRow('stSourcesContainer');
-                if (!dst.children.length) createStRow('stDestContainer');
-                window.calcStTotals();
-            }
+    if (isActive) {
+        const src = document.getElementById('stSourcesContainer');
+        const dst = document.getElementById('stDestContainer');
+        if (!src.children.length) createStRow('stSourcesContainer');
+        if (!dst.children.length) createStRow('stDestContainer');
+        window.calcStTotals();
+    } else {
+        // Clear Self Transfer rows and reset summary so hidden required inputs don't block form validation
+        document.getElementById('stSourcesContainer').innerHTML = "";
+        document.getElementById('stDestContainer').innerHTML = "";
+        document.getElementById('stTotalOut').textContent = "₹0.00";
+        document.getElementById('stTotalIn').textContent = "₹0.00";
+        const diffEl = document.getElementById('stDiff');
+        if (diffEl) {
+            diffEl.textContent = "₹0.00";
+            diffEl.style.color = "var(--text-main)";
         }
+    }
+}
+
 
         function applyBikeTaxiDefaults() {
             const purpSel = document.getElementById("purpose");
@@ -1767,22 +1786,28 @@ document.querySelectorAll('#mathKeyboard .kb-key').forEach(btn => {
         }
 
         window.removeDailyTxn = async function(id) {
-            const ok = await showConfirm("Delete this transaction locally and from the backend?");
-            if (!ok) return;
-            const data = getDailyTxns();
-            const txn = data.txns.find(t => t.id === id);
-            if (!txn) return;
-            data.txns = data.txns.filter(t => t.id !== id);
-            localStorage.setItem('daily_txns', JSON.stringify(data));
-            renderSessionDashboard();
-            renderDailyTxnsModal();
-            if (txn.ref) {
-                try {
-                    await fetch(`${DELETE_URL}?action=delete&value=${encodeURIComponent(txn.ref)}`, { method: "GET", mode: "no-cors" });
-                    showToast("🗑️ Delete command sent to backend");
-                } catch (e) { showToast("Failed to connect to backend", "var(--danger)"); }
-            } else { showToast("🗑️ Removed locally"); }
-        };
+    const ok = await showConfirm("Delete this transaction from the backend?");
+    if (!ok) return;
+    const data = getDailyTxns();
+    const txn = data.txns.find(t => t.id === id);
+    if (!txn) return;
+    
+    if (txn.ref) {
+        try {
+            await fetch(`${DELETE_URL}?action=delete&value=${encodeURIComponent(txn.ref)}`, { method: "GET", mode: "no-cors" });
+            showToast("🗑️ Delete command sent");
+            
+            // Re-fetch backend logs after 500ms
+            setTimeout(() => {
+                const currentDate = document.getElementById('date').value || getTodayIST();
+                fetchLogsForDate(currentDate);
+            }, 500);
+        } catch (e) { 
+            showToast("Failed to connect to backend", "var(--danger)"); 
+        }
+    }
+};
+
 
         function setSelectOrOther(selectElem, otherElem, parentId, value) {
             if (!value) {
@@ -1881,17 +1906,34 @@ window.viewDailyTxnDetails = function(id) {
     if (txn && txn.fullHtml) {
         document.getElementById('dailyTxnDetailsContent').innerHTML = txn.fullHtml;
         
-        // Hide Daily Log modal and open Details modal
+        // Hide Today Txn Log modal and display Details modal
         document.getElementById('todayTxnModal').classList.add('hidden');
         document.getElementById('dailyTxnDetailsModal').classList.remove('hidden');
     }
 };
 
 window.closeTxnDetailsModal = function() {
-    // Hide Details modal and reopen Daily Log modal
+    // Hide Details modal and reopen Today Txn Log modal
     document.getElementById('dailyTxnDetailsModal').classList.add('hidden');
     document.getElementById('todayTxnModal').classList.remove('hidden');
 };
+
+// Close Details on backdrop click (outside the modal card)
+document.getElementById('dailyTxnDetailsModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeTxnDetailsModal();
+    }
+});
+
+// Close Details on Escape key press
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const detailsModal = document.getElementById('dailyTxnDetailsModal');
+        if (detailsModal && !detailsModal.classList.contains('hidden')) {
+            closeTxnDetailsModal();
+        }
+    }
+});
 
 
         // --- LOG FILTERING STATE & RENDER LOGIC ---
@@ -3052,97 +3094,95 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
         }
 
         async function processSave() {
-            document.getElementById('confirmModal').classList.add('hidden');
-            const btn = document.getElementById('submitBtn');
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.innerHTML = `<span class="saving-text">Saving...</span>`;
-            try {
-                for (let body of window.currentPayloads) {
-                    await fetch(SCRIPT_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                        body: body
-                    });
-                }
-                showToast("✔ Transaction Saved");
-                updateRecurringNextDate();
-
-                if (window.currentSaveStats) {
-                    addDailyTxn(
-                        window.currentSaveStats.narration,
-                        window.currentSaveStats.amount,
-                        window.currentSaveStats.flow,
-                        window.currentSaveStats.details,
-                        window.currentSaveStats.fullHtml,
-                        window.currentSaveStats.ref,
-                        window.currentSaveStats.formState
-                    );
-                    window.currentSaveStats = null;
-                }
-
-                if (multiTxnQueue.length > 0) {
-                    multiTxnQueue.splice(multiTxnIndex, 1);
-                    if (multiTxnQueue.length > 0) {
-                        if (multiTxnIndex >= multiTxnQueue.length) multiTxnIndex = multiTxnQueue.length - 1;
-                        loadMultiTxn();
-                    } else {
-                        document.getElementById('multiTxnNav').classList.add('hidden');
-                        fullReset(batchMode);
-                    }
-                } else {
-                    fullReset(batchMode);
-                }
-
-            } catch (err) {
-                saveToDB();
-                showToast("📦 Saved offline", "#3b82f6");
-            } finally { btn.disabled = false; btn.textContent = originalText; }
+    document.getElementById('confirmModal').classList.add('hidden');
+    const btn = document.getElementById('submitBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="saving-text">Saving...</span>`;
+    try {
+        for (let body of window.currentPayloads) {
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: body
+            });
         }
+        showToast("✔ Transaction Saved");
+        updateRecurringNextDate();
+        const currentDate = document.getElementById('date').value || getTodayIST();
+        await fetchLogsForDate(currentDate);
+        window.currentSaveStats = null;
+
+        if (multiTxnQueue.length > 0) {
+            multiTxnQueue.splice(multiTxnIndex, 1);
+            if (multiTxnQueue.length > 0) {
+                if (multiTxnIndex >= multiTxnQueue.length) multiTxnIndex = multiTxnQueue.length - 1;
+                loadMultiTxn();
+            } else {
+                document.getElementById('multiTxnNav').classList.add('hidden');
+                fullReset(batchMode);
+            }
+        } else {
+            fullReset(batchMode);
+        }
+
+    } catch (err) {
+        saveToDB();
+        showToast("📦 Saved offline", "#3b82f6");
+    } finally { 
+        btn.disabled = false; 
+        btn.textContent = originalText; 
+    }
+}
+
 
         async function syncAllData() {
-            if (!navigator.onLine) { showToast("Internet needed to sync.", "var(--danger)"); return; }
-            const txRead = db.transaction(STORE_NAME, "readonly");
-            const storeRead = txRead.objectStore(STORE_NAME);
-            const items = await new Promise(r => { storeRead.getAll().onsuccess = (e) => r(e.target.result); });
-            const keys = await new Promise(r => { storeRead.getAllKeys().onsuccess = (e) => r(e.target.result); });
-            if (items.length === 0) { showToast("Queue is empty"); return; }
-            const ok = await showConfirm(`Start syncing ${items.length} queued transactions?`);
-            if (!ok) return;
-            const btnSync = document.getElementById('btnSyncAll');
-            const btnStop = document.getElementById('btnStopSync');
-            syncAborted = false;
-            btnSync.classList.add('hidden');
-            btnStop.classList.remove('hidden');
-            for (let i = 0; i < items.length; i++) {
-                if (syncAborted) break;
-                btnStop.textContent = `🛑 Stop Syncing (${i+1}/${items.length})`;
-                try {
-                    let narration = "";
-                    try {
-                        const p = new URLSearchParams(items[i]);
-                        narration = p.get('narration');
-                    } catch(e) {}
+    if (!navigator.onLine) { showToast("Internet needed to sync.", "var(--danger)"); return; }
+    const txRead = db.transaction(STORE_NAME, "readonly");
+    const storeRead = txRead.objectStore(STORE_NAME);
+    const items = await new Promise(r => { storeRead.getAll().onsuccess = (e) => r(e.target.result); });
+    const keys = await new Promise(r => { storeRead.getAllKeys().onsuccess = (e) => r(e.target.result); });
+    if (items.length === 0) { showToast("Queue is empty"); return; }
+    const ok = await showConfirm(`Start syncing ${items.length} queued transactions?`);
+    if (!ok) return;
+    const btnSync = document.getElementById('btnSyncAll');
+    const btnStop = document.getElementById('btnStopSync');
+    syncAborted = false;
+    btnSync.classList.add('hidden');
+    btnStop.classList.remove('hidden');
+    for (let i = 0; i < items.length; i++) {
+        if (syncAborted) break;
+        btnStop.textContent = `🛑 Stop Syncing (${i+1}/${items.length})`;
+        try {
+            let narration = "";
+            try {
+                const p = new URLSearchParams(items[i]);
+                narration = p.get('narration');
+            } catch(e) {}
 
-                    await fetch(SCRIPT_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                        body: items[i]
-                    });
-                   
-                    if (narration) triggerRecurringUpdateByNarration(narration);
-                    await new Promise(res => {
-                        const txDel = db.transaction(STORE_NAME, "readwrite");
-                        txDel.objectStore(STORE_NAME).delete(keys[i]).onsuccess = () => { updatePendingCount(); res(); };
-                    });
-                } catch (err) { console.error("Sync error:", err); showToast("Sync interrupted.", "var(--danger)"); break; }
-            }
-            btnStop.classList.add('hidden');
-            btnStop.textContent = "🛑 Stop Sync";
-            btnSync.classList.remove('hidden');
-            if (syncAborted) showToast("Sync stopped.");
-            else showToast("✔ All data synced to Drive");
-        }
+            await fetch(SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: items[i]
+            });
+           
+            if (narration) triggerRecurringUpdateByNarration(narration);
+            await new Promise(res => {
+                const txDel = db.transaction(STORE_NAME, "readwrite");
+                txDel.objectStore(STORE_NAME).delete(keys[i]).onsuccess = () => { updatePendingCount(); res(); };
+            });
+        } catch (err) { console.error("Sync error:", err); showToast("Sync interrupted.", "var(--danger)"); break; }
+    }
+    btnStop.classList.add('hidden');
+    btnStop.textContent = "🛑 Stop Sync";
+    btnSync.classList.remove('hidden');
+    const currentDate = document.getElementById('date').value || getTodayIST();
+    await fetchLogsForDate(currentDate);
+
+    if (syncAborted) showToast("Sync stopped.");
+    else showToast("✔ All data synced to Drive");
+}
+
 
         document.getElementById('btnConfirmEditSave').onclick = async function() {
             const oldLogId = window._oldLogId;
@@ -3222,40 +3262,32 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
         }
 
         function saveToDB() {
-            if (!db) { showToast("Database not ready", "var(--danger)"); return; }
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            const store = tx.objectStore(STORE_NAME);
-            window.currentPayloads.forEach(body => store.add(body));
-            tx.oncomplete = () => {
-                updatePendingCount();
-                showToast(batchMode ? "📦 Added to Batch Queue" : "📦 Saved Offline");
-                if (window.currentSaveStats) {
-                    addDailyTxn(
-                        window.currentSaveStats.narration,
-                        window.currentSaveStats.amount,
-                        window.currentSaveStats.flow,
-                        window.currentSaveStats.details,
-                        window.currentSaveStats.fullHtml,
-                        window.currentSaveStats.ref,
-                        window.currentSaveStats.formState
-                    );
-                    window.currentSaveStats = null;
-                }
-                if (multiTxnQueue.length > 0) {
-                    multiTxnQueue.splice(multiTxnIndex, 1);
-                    if (multiTxnQueue.length > 0) {
-                        if (multiTxnIndex >= multiTxnQueue.length) multiTxnIndex = multiTxnQueue.length - 1;
-                        loadMultiTxn();
-                    } else {
-                        document.getElementById('multiTxnNav').classList.add('hidden');
-                        fullReset(batchMode);
-                    }
-                } else {
-                    fullReset(batchMode);
-                }
-            };
-            tx.onerror = (e) => { console.error("Queue save failed", e); showToast("Error saving to queue", "var(--danger)"); };
+    if (!db) { showToast("Database not ready", "var(--danger)"); return; }
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    window.currentPayloads.forEach(body => store.add(body));
+    tx.oncomplete = () => {
+        updatePendingCount();
+        showToast(batchMode ? "📦 Added to Batch Queue" : "📦 Saved Offline");
+        
+        window.currentSaveStats = null;
+
+        if (multiTxnQueue.length > 0) {
+            multiTxnQueue.splice(multiTxnIndex, 1);
+            if (multiTxnQueue.length > 0) {
+                if (multiTxnIndex >= multiTxnQueue.length) multiTxnIndex = multiTxnQueue.length - 1;
+                loadMultiTxn();
+            } else {
+                document.getElementById('multiTxnNav').classList.add('hidden');
+                fullReset(batchMode);
+            }
+        } else {
+            fullReset(batchMode);
         }
+    };
+    tx.onerror = (e) => { console.error("Queue save failed", e); showToast("Error saving to queue", "var(--danger)"); };
+}
+
 
         function ensureBiketaxiOptionExists(purposeSelect) {
             const hasBiketaxi = Array.from(purposeSelect.options).some(opt => opt.value === "BIKETAXI");
@@ -3371,46 +3403,57 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
         }
 
         function fullReset(keepModes) {
-            document.getElementById('txnForm').reset();
-            setRefPlaceholder();
+    document.getElementById('txnForm').reset();
+    setRefPlaceholder();
 
-            bikeTaxiMode = false;
-            if (!keepModes) {
-                batchMode = false;
-                recurringMode = false;
-                splitMode = false;
-                selfTransferMode = false;
-                document.getElementById('recurringOptions').classList.add('hidden');
-                document.getElementById('splitPanel').style.display = 'none';
-                toggleSelfTransferUI(false);
-            }
-            updateModeButtons();
-
-            if (!keepModes) {
-                editingLogId = null;
-                window.editingOriginalTxn = null;
-            }
-
-            document.getElementById('txnForm').classList.remove('was-validated');
-            document.getElementById('purpose_other').classList.add('hidden');
-            document.getElementById('spent_for_other').classList.add('hidden');
-            document.getElementById('purposeSmartRow').classList.remove('has-other');
-            document.getElementById('spentSmartRow').classList.remove('has-other');
-            document.getElementById('purpose_other').disabled = true;
-            document.getElementById('spent_for_other').disabled = true;
-
-            document.getElementById('paymentContainer').innerHTML = "";
-            createPaymentRow();
-
-            document.getElementById('stSourcesContainer').innerHTML = "";
-            document.getElementById('stDestContainer').innerHTML = "";
-
-            document.getElementById('date').value = getTodayIST();
-
-            if (window.clearSplitPanel) window.clearSplitPanel();
-
-            updateGrandTotal();
+    bikeTaxiMode = false;
+    if (!keepModes) {
+        batchMode = false;
+        recurringMode = false;
+        splitMode = false;
+        selfTransferMode = false;
+        document.getElementById('recurringOptions').classList.add('hidden');
+        document.getElementById('splitPanel').style.display = 'none';
+        toggleSelfTransferUI(false);
+    } else {
+        // In Batch Mode, reset specific sub-modes (Self Transfer & Split) back to standard form entry
+        if (selfTransferMode) {
+            selfTransferMode = false;
+            toggleSelfTransferUI(false);
         }
+        if (splitMode) {
+            splitMode = false;
+            document.getElementById('splitPanel').style.display = 'none';
+        }
+    }
+    updateModeButtons();
+
+    if (!keepModes) {
+        editingLogId = null;
+        window.editingOriginalTxn = null;
+    }
+
+    document.getElementById('txnForm').classList.remove('was-validated');
+    document.getElementById('purpose_other').classList.add('hidden');
+    document.getElementById('spent_for_other').classList.add('hidden');
+    document.getElementById('purposeSmartRow').classList.remove('has-other');
+    document.getElementById('spentSmartRow').classList.remove('has-other');
+    document.getElementById('purpose_other').disabled = true;
+    document.getElementById('spent_for_other').disabled = true;
+
+    // Reset standard payment row
+    document.getElementById('paymentContainer').innerHTML = "";
+    createPaymentRow();
+
+    document.getElementById('date').value = getTodayIST();
+
+    if (window.clearSplitPanel) window.clearSplitPanel();
+
+    updateGrandTotal();
+}
+
+
+
 
         function autoPredictPurpose() {
             if (selfTransferMode) return;
@@ -3560,63 +3603,84 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
         }
 
         function renderQueue(items) {
-            const body = document.getElementById('queueBody');
-            body.innerHTML = "";
-            items.forEach((item, idx) => {
-                let isSelfTransfer = false;
-                let parsedObj = null;
-                try {
-                    parsedObj = JSON.parse(item);
-                    if (parsedObj.refid && parsedObj.denoms) isSelfTransfer = true;
-                } catch(e) {}
+    const body = document.getElementById('queueBody');
+    body.innerHTML = "";
+    items.forEach((item, idx) => {
+        let pData = {};
 
-                if (isSelfTransfer) {
-                    body.innerHTML += `<tr>
-                      <td style="text-align:center;">${formatDisplayDate(parsedObj.date)}</td>
-                      <td style="text-align:center;">${parsedObj.narration}</td>
-                      <td style="text-align:center;">-</td>
-                      <td style="text-align:center;">-</td>
-                      <td style="text-align:center;">-</td>
-                      <td style="text-align:center;padding-left:10px;"><strong>Self Transfer</strong><div style="font-size:10px;">${parsedObj.account} (${parsedObj.type})</div></td>
-                      <td style="text-align:center;">self_transfer</td>
-                      <td style="text-align:center; color:var(--self-transfer);">₹${Number(parsedObj.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
-                    </tr>`;
-                } else {
-                    const p = new URLSearchParams(item);
-                    const isSplit = p.get('split_enabled') === '1';
-                    const spentFor = p.get('spent_for') || "-";
-                    let accountDisplay = "", amountDisplay = "";
-                    let flow = p.get('flow') || "";
-
-                    if (isSplit) {
-                        const personalShare = parseFloat(p.get('personal_share') || 0);
-                        const payments = JSON.parse(p.get('payments') || '[]');
-                        const totalAmt = payments.reduce((sum, pmt) => sum + (parseFloat(pmt.amount) || 0), 0);
-                        amountDisplay = `₹${totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                        accountDisplay = `<strong>Split</strong><div style="font-size:10px;">Personal: ₹${personalShare.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`;
-                    } else {
-                        const amt = parseFloat(p.get('withdrawn')) > 0 ? p.get('withdrawn') : p.get('deposit');
-                        amountDisplay = `₹${Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                        accountDisplay = `<strong>${p.get('from_to')}</strong><div style="font-size:10px;color:#94a3b8;">(${p.get('trtype')})</div>`;
-                        flow = p.get('flow');
-                    }
-                    const invoice = p.get('invoice_no') || "-";
-                    const purpose = p.get('purpose') || "-";
-                    body.innerHTML += `<tr>
-                      <td style="text-align:center;">${formatDisplayDate(p.get('date'))}</td>
-                      <td style="text-align:center;">${p.get('narration')}</td>
-                      <td style="text-align:center;">${invoice}</td>
-                      <td style="text-align:center;">${purpose}</td>
-                      <td style="text-align:center;">${spentFor}</td>
-                      <td style="text-align:center;padding-left:10px;">${accountDisplay}</td>
-                      <td style="text-align:center;">${flow}</td>
-                      <td style="text-align:center;">${amountDisplay}</td>
-                      <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="editQueue(${idx})">✏️</span><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
-                    </tr>`;
-                }
-            });
+        // Parse item whether it is JSON or URLSearchParams string
+        try {
+            const parsed = JSON.parse(item);
+            if (typeof parsed === 'object' && parsed !== null) {
+                pData = parsed;
+            }
+        } catch(e) {
+            const params = new URLSearchParams(item);
+            for (let [k, v] of params.entries()) {
+                pData[k] = v;
+            }
         }
+
+        // Detect Self Transfer entries reliably across formats
+        const isSelfTransfer = pData.category === 'self transfer' || 
+                               pData.action === 'selfTransfer' || 
+                               pData.self_transfer ||
+                               (pData.narration && (pData.narration.includes('(From)') || pData.narration.includes('(To)')));
+
+        if (isSelfTransfer) {
+            const date = pData.date || "";
+            const narration = pData.narration || "Self Transfer";
+            const acc = pData.from_to || pData.account || "-";
+            const type = pData.trtype || pData.type || "-";
+            const flow = pData.flow || "self_transfer";
+            const amt = parseFloat(pData.amount || pData.withdrawn || pData.deposit || 0);
+
+            body.innerHTML += `<tr>
+              <td style="text-align:center;">${formatDisplayDate(date)}</td>
+              <td style="text-align:center;">${narration}</td>
+              <td style="text-align:center;">-</td>
+              <td style="text-align:center;">Self Transfer</td>
+              <td style="text-align:center;">-</td>
+              <td style="text-align:center;padding-left:10px;"><strong>${acc}</strong><div style="font-size:10px;color:#94a3b8;">(${type})</div></td>
+              <td style="text-align:center;">${flow}</td>
+              <td style="text-align:center; color:var(--self-transfer); font-weight:700;">₹${amt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="editQueue(${idx})">✏️</span><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
+            </tr>`;
+        } else {
+            const isSplit = pData.split_enabled === '1' || pData.split_enabled === true;
+            const spentFor = pData.spent_for || "-";
+            let accountDisplay = "", amountDisplay = "";
+            let flow = pData.flow || "";
+
+            if (isSplit) {
+                const personalShare = parseFloat(pData.personal_share || 0);
+                let payments = [];
+                try { payments = typeof pData.payments === 'string' ? JSON.parse(pData.payments) : (pData.payments || []); } catch(e){}
+                const totalAmt = payments.reduce((sum, pmt) => sum + (parseFloat(pmt.amount) || 0), 0);
+                amountDisplay = `₹${totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                accountDisplay = `<strong>Split</strong><div style="font-size:10px;">Personal: ₹${personalShare.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>`;
+            } else {
+                const amt = parseFloat(pData.withdrawn || 0) > 0 ? pData.withdrawn : pData.deposit;
+                amountDisplay = `₹${Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                accountDisplay = `<strong>${pData.from_to || '-'}</strong><div style="font-size:10px;color:#94a3b8;">(${pData.trtype || '-'})</div>`;
+            }
+            const invoice = pData.invoice_no || "-";
+            const purpose = pData.purpose || "-";
+            body.innerHTML += `<tr>
+              <td style="text-align:center;">${formatDisplayDate(pData.date)}</td>
+              <td style="text-align:center;">${pData.narration}</td>
+              <td style="text-align:center;">${invoice}</td>
+              <td style="text-align:center;">${purpose}</td>
+              <td style="text-align:center;">${spentFor}</td>
+              <td style="text-align:center;padding-left:10px;">${accountDisplay}</td>
+              <td style="text-align:center;">${flow}</td>
+              <td style="text-align:center;">${amountDisplay}</td>
+              <td><div class="td-center"><span style="cursor:pointer;font-size:16px;" onclick="editQueue(${idx})">✏️</span><span style="cursor:pointer;font-size:16px;" onclick="deleteQueue(${idx})">🗑️</span></div></td>
+            </tr>`;
+        }
+    });
+}
+
 
         const suggestBox = document.getElementById("narration-suggestions");
         const narrationInp = document.getElementById("narration");
@@ -3665,10 +3729,87 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
         });
         document.getElementById("narration").addEventListener("input", autoFillSalary);
 
-        window.deleteQueue = async(idx) => { const ok = await showConfirm("Delete this queued item?"); if (!ok) return;
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            const store = tx.objectStore(STORE_NAME);
-            store.getAllKeys().onsuccess = (e) => { store.delete(e.target.result[idx]).onsuccess = () => updatePendingCount(); }; };
+        window.deleteQueue = async (idx) => {
+    const ok = await showConfirm("Delete this queued item?");
+    if (!ok || !db) return;
+
+    const txRead = db.transaction(STORE_NAME, "readonly");
+    const storeRead = txRead.objectStore(STORE_NAME);
+
+    storeRead.getAll().onsuccess = (e) => {
+        const allItems = e.target.result;
+        const targetItem = allItems[idx];
+        if (!targetItem) return;
+
+        storeRead.getAllKeys().onsuccess = (ev) => {
+            const allKeys = ev.target.result;
+
+            // Safe queue parser for JSON or URLSearchParams
+            function parseQueueItem(str) {
+                try {
+                    const json = JSON.parse(str);
+                    if (typeof json === 'object' && json !== null) return json;
+                } catch (err) {}
+                const params = new URLSearchParams(str);
+                const obj = {};
+                for (let [k, v] of params.entries()) {
+                    obj[k] = v;
+                }
+                return obj;
+            }
+
+            const parsedTarget = parseQueueItem(targetItem);
+            const targetRef = parsedTarget.reference || parsedTarget.refid || parsedTarget.refId;
+            const isSelfTransfer = parsedTarget.category === 'self transfer' || 
+                                   parsedTarget.action === 'selfTransfer' || 
+                                   parsedTarget.self_transfer ||
+                                   (parsedTarget.narration && (parsedTarget.narration.includes('(From)') || parsedTarget.narration.includes('(To)')));
+
+            const keysToDelete = [];
+
+            if (isSelfTransfer && targetRef) {
+                // Find all matching leg entries in the queue sharing this Reference ID
+                allItems.forEach((item, itemIdx) => {
+                    const pData = parseQueueItem(item);
+                    const itemRef = pData.reference || pData.refid || pData.refId;
+                    const itemIsST = pData.category === 'self transfer' || 
+                                     pData.action === 'selfTransfer' || 
+                                     pData.self_transfer ||
+                                     (pData.narration && (pData.narration.includes('(From)') || pData.narration.includes('(To)')));
+
+                    if (itemIsST && itemRef === targetRef) {
+                        keysToDelete.push(allKeys[itemIdx]);
+                    }
+                });
+            } else {
+                keysToDelete.push(allKeys[idx]);
+            }
+
+            // Perform batch deletion
+            const txDel = db.transaction(STORE_NAME, "readwrite");
+            const storeDel = txDel.objectStore(STORE_NAME);
+            keysToDelete.forEach(key => storeDel.delete(key));
+
+            txDel.oncomplete = () => {
+                // Check if any items remain in the database
+                const txCheck = db.transaction(STORE_NAME, "readonly");
+                txCheck.objectStore(STORE_NAME).getAll().onsuccess = (ev2) => {
+                    const remainingItems = ev2.target.result;
+                    updatePendingCount();
+
+                    // If queue is now empty, hide modal
+                    if (remainingItems.length === 0) {
+                        document.getElementById('queueModal').classList.add('hidden');
+                        showToast("Queue is now empty");
+                    } else {
+                        showToast("🗑️ Item(s) deleted from queue");
+                    }
+                };
+            };
+        };
+    };
+};
+
 
 window.editQueue = (idx) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
@@ -4814,12 +4955,48 @@ window.editQueue = (idx) => {
                     .catch(err => console.log('SW Registration Failed', err));
             });
         }
+async function autoRestoreDataOnLoad() {
+    if (!navigator.onLine) return;
+
+    // 1. Auto-restore Recurring Templates if local storage is empty
+    const localRecurring = localStorage.getItem("recurringTemplates");
+    if (!localRecurring || JSON.parse(localRecurring || "[]").length === 0) {
+        try {
+            const res = await fetch(SCRIPT_URL + "?action=getRecurringBackup");
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                localStorage.setItem("recurringTemplates", JSON.stringify(data));
+                renderUpcomingRecurring();
+                console.log("✔ Recurring templates auto-restored from Drive");
+            }
+        } catch (err) {
+            console.log("Recurring auto-restore skipped:", err);
+        }
+    }
+
+    // 2. Auto-restore Custom Templates if local storage is empty
+    const localTemplates = localStorage.getItem("customTemplates");
+    if (!localTemplates || JSON.parse(localTemplates || "[]").length === 0) {
+        try {
+            const res = await fetch(SCRIPT_URL + "?action=getCustomTemplatesBackup");
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                localStorage.setItem("customTemplates", JSON.stringify(data));
+                if (typeof renderCustomTemplates === "function") renderCustomTemplates();
+                console.log("✔ Custom templates auto-restored from Drive");
+            }
+        } catch (err) {
+            console.log("Custom templates auto-restore skipped:", err);
+        }
+    }
+}
 
         // --- ON LOAD ---
         window.onload = () => {
             document.getElementById('date').value = getTodayIST();
             fullReset();
             loadPurposeMemory();
+            autoRestoreDataOnLoad();
             renderUpcomingRecurring();
             setTimeout(checkRecurringTemplates, 500);
             fetchLogsForDate(getTodayIST());
