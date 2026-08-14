@@ -840,10 +840,12 @@
                 </select>
                 <div class="err-msg">Flow required</div>
             </div>
-            <div id="invoiceContainer" style="display:flex;flex-direction:column;">
-                <label style="margin-top:0;">Invoice No. (Opt)</label>
-                <input type="text" id="invoice_no" placeholder="Enter Invoice Number">
-            </div>
+            <div id="invoiceContainer" style="display:flex;flex-direction:column;position:relative;">
+    <label style="margin-top:0;">Invoice No. (Opt)</label>
+    <input type="text" id="invoice_no" placeholder="Enter Invoice Number" autocomplete="off">
+    <div id="invoice-suggestions" class="autocomplete-items hidden"></div>
+</div>
+
         </div>
 
         <div id="purposeGroup">
@@ -5063,6 +5065,150 @@ async function autoRestoreDataOnLoad() {
         }
     }
 }
+document.getElementById('invoice_no').addEventListener('blur', async function() {
+    const invoiceNo = this.value.trim();
+    if (!invoiceNo) return;
+
+    showToast(`🔍 Searching invoice ${invoiceNo}...`);
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=getInvoiceTotal&invoiceNo=${encodeURIComponent(invoiceNo)}`);
+        const result = await response.json();
+
+        if (result.total !== undefined && result.total > 0) {
+            const firstAmtInput = document.querySelector('#paymentContainer .row-amt');
+            if (firstAmtInput) {
+                firstAmtInput.value = result.total.toFixed(2);
+                firstAmtInput.dispatchEvent(new Event('input', { bubbles: true }));
+                showToast(`✔ Invoice amount loaded: ₹${result.total.toFixed(2)}`);
+            }
+        } else {
+            showToast("⚠️ No matching invoice found or total is zero", "#f59e0b");
+        }
+    } catch (err) {
+        console.error("Invoice fetch error:", err);
+        showToast("Failed to fetch invoice amount", "var(--danger)");
+    }
+});
+let cachedInvoicesForDate = [];
+
+// Fetch invoices when date changes
+async function fetchInvoicesForSelectedDate() {
+    const selectedDate = document.getElementById('date').value;
+    if (!selectedDate) return;
+
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getInvoicesByDate&date=${selectedDate}`);
+        cachedInvoicesForDate = await res.json();
+    } catch (e) {
+        cachedInvoicesForDate = [];
+    }
+}
+
+// Bind to date change event
+document.getElementById('date').addEventListener('change', fetchInvoicesForSelectedDate);
+
+// Invoice Autocomplete Interaction
+const invoiceInp = document.getElementById('invoice_no');
+const invoiceSuggestBox = document.getElementById('invoice-suggestions');
+
+invoiceInp.addEventListener('focus', () => {
+    if (cachedInvoicesForDate.length > 0) showInvoiceSuggestions('');
+});
+
+invoiceInp.addEventListener('input', function() {
+    showInvoiceSuggestions(this.value.trim().toLowerCase());
+});
+
+function showInvoiceSuggestions(filterText) {
+    invoiceSuggestBox.innerHTML = '';
+    const matches = cachedInvoicesForDate.filter(inv => inv.invoiceNo.toLowerCase().includes(filterText));
+
+    if (matches.length === 0) {
+        invoiceSuggestBox.classList.add('hidden');
+        return;
+    }
+
+    invoiceSuggestBox.classList.remove('hidden');
+    matches.forEach(item => {
+        const div = document.createElement('div');
+        const badge = item.onlySelf ? '👤 Self' : '💸 Split';
+        div.innerHTML = `🧾 <strong>${item.invoiceNo}</strong> [${badge}] — <span style="color:var(--primary);">₹${item.totalAmount.toFixed(2)}</span>`;
+        
+        div.onclick = function() {
+            invoiceInp.value = item.invoiceNo;
+            invoiceSuggestBox.classList.add('hidden');
+
+            if (item.onlySelf) {
+                // If only self, disable split mode and fill amount directly
+                setMode('split', false);
+                const firstAmtInput = document.querySelector('#paymentContainer .row-amt');
+                if (firstAmtInput) {
+                    firstAmtInput.value = item.totalAmount.toFixed(2);
+                    firstAmtInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                showToast(`✔ Invoice loaded: ₹${item.totalAmount.toFixed(2)}`);
+            } else {
+                // If multiple recipients/mixed, enable split mode automatically
+                setMode('split', true);
+
+                if (typeof window.clearSplitPanel === 'function') {
+                    window.clearSplitPanel();
+                }
+
+                let personalAmt = 0;
+                const recipientsContainer = document.getElementById('recipientsContainer');
+                if (recipientsContainer) recipientsContainer.innerHTML = '';
+
+                if (!document.getElementById('personalShareWrapper') && typeof window.restorePersonalShare === 'function') {
+                    window.restorePersonalShare();
+                }
+
+                // Populate Personal Share and Recipients from breakdown
+                Object.entries(item.breakdown).forEach(([key, amt]) => {
+                    if (key.toLowerCase() === 'self') {
+                        personalAmt += amt;
+                    } else {
+                        if (typeof window.addRecipientRow === 'function') {
+                            window.addRecipientRow(key, amt);
+                        }
+                    }
+                });
+
+                const psInput = document.getElementById('personalShare');
+                if (psInput) {
+                    psInput.value = personalAmt > 0 ? personalAmt.toFixed(2) : '0.00';
+                }
+
+                // Set total payment amount
+                const firstAmtInput = document.querySelector('#paymentContainer .row-amt');
+                if (firstAmtInput) {
+                    firstAmtInput.value = item.totalAmount.toFixed(2);
+                    firstAmtInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+
+                if (typeof window.calcSplitDifference === 'function') {
+                    window.calcSplitDifference();
+                }
+
+                showToast(`✔ Split invoice loaded (₹${item.totalAmount.toFixed(2)})`);
+            }
+        };
+        invoiceSuggestBox.appendChild(div);
+    });
+}
+
+
+// Close suggestions on outside click
+document.addEventListener('click', function(e) {
+    if (e.target !== invoiceInp) {
+        invoiceSuggestBox.classList.add('hidden');
+    }
+});
+
+// Initial pre-fetch on page load
+window.addEventListener('load', () => {
+    fetchInvoicesForSelectedDate();
+});
 
         // --- ON LOAD ---
         window.onload = () => {
