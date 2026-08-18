@@ -260,7 +260,9 @@
     .payment-row-wrapper { margin-bottom:12px; border-bottom:1px dashed var(--border-color); padding-bottom:12px; }
     .payment-row { display:grid; grid-template-columns:1fr 1.2fr 80px; gap:6px; align-items:end; }
     .btn-add-mode { background:var(--secondary); color:#fff; border:none; font-size:11px; height:26px; cursor:pointer; border-radius:6px; width:auto; padding:0 12px; margin:0; }
-    .total-wrapper { display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding:10px 14px; background:var(--bg-input); border-radius:10px; border:1px solid var(--border-color); transition:background 0.5s ease; }
+        .total-wrapper { display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding:10px 14px; background:var(--bg-input); border-radius:10px; border:1px solid var(--border-color); transition:background 0.5s ease; }
+    .split-only.hidden { display: none !important; }
+
    
     /* CASH DENOMINATIONS STYLING (MATCHED TO REFERENCE IMAGE) */
     .row-cash-wrapper {
@@ -877,7 +879,26 @@
                 <div class="err-msg">Category required</div>
             </div>
         </div>
-
+<div id="splitPanel" style="display:none;margin-top:14px;padding-top:14px;">
+            
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span style="font-size:12px;font-weight:600;">Loan / Split Mode:</span>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="button" id="globalSplitMode" style="width:auto;height:28px;font-size:11px;padding:0 10px;background:rgba(34,197,94,0.1);color:var(--primary);border:1px solid var(--primary);margin:0;border-radius:6px;cursor:pointer;font-weight:600;" onclick="toggleGlobalSplitMode(this)">Value</button>
+                    <button type="button" id="btnSplitEqually" style="width:auto;height:28px;font-size:11px;padding:0 10px;background:rgba(34,197,94,0.1);color:var(--primary);border:1px solid var(--primary);margin:0;border-radius:6px;cursor:pointer;font-weight:600;">Split Equally</button>
+                    <span id="addRecipientIcon" style="cursor:pointer;font-size:22px;color:var(--secondary);line-height:1;">➕</span>
+                </div>
+            </div>
+            <div id="personalShareContainer">
+                <div id="personalShareWrapper" class="recipient-row swipe-wrapper">
+                    <div class="swipe-content recipient-swipe-content">
+                        <div class="static-label-box">My Share (Personal)</div>
+                        <input type="text" inputmode="none" id="personalShare" class="split-amt-input math-input" placeholder="0.00" autocomplete="off" autocorrect="off" spellcheck="false">
+                    </div>
+                </div>
+            </div>
+            <div id="recipientsContainer"></div>
+</div>
         <div id="spentForGroup">
             <label style="margin-top:12px;">Spent For</label>
             <div id="spentSmartRow" class="smart-row">
@@ -932,33 +953,17 @@
             </div>
         </div>
 
-        <div id="splitPanel" style="display:none;margin-top:14px;border-top:1px solid var(--border-color);padding-top:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-input);padding:10px 14px;border-radius:12px;margin-bottom:12px;border:1px solid var(--border-color);">
-                <span style="font-size:12px;font-weight:600;color:var(--text-label);">Difference:</span>
-                <strong id="splitDifference" style="color:var(--primary);font-size:14px;">₹0.00</strong>
+        <div class="total-wrapper" id="totalWrapper" style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div style="display:flex; flex-direction:column; gap:6px;" id="totalLabelGroup">
+                <span style="font-size:12px; font-weight:700; color:var(--text-label);">Total Amount:</span>
+                <span id="splitDiffLabel" class="split-only hidden" style="font-size:12px; font-weight:700; color:var(--text-label);">Difference:</span>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <span style="font-size:12px;font-weight:600;">Loan / Split Mode:</span>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <button type="button" id="globalSplitMode" style="width:auto;height:28px;font-size:11px;padding:0 10px;background:rgba(34,197,94,0.1);color:var(--primary);border:1px solid var(--primary);margin:0;border-radius:6px;cursor:pointer;font-weight:600;" onclick="toggleGlobalSplitMode(this)">Value</button>
-                    <button type="button" id="btnSplitEqually" style="width:auto;height:28px;font-size:11px;padding:0 10px;background:rgba(34,197,94,0.1);color:var(--primary);border:1px solid var(--primary);margin:0;border-radius:6px;cursor:pointer;font-weight:600;">Split Equally</button>
-                    <span id="addRecipientIcon" style="cursor:pointer;font-size:22px;color:var(--secondary);line-height:1;">➕</span>
-                </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                <span style="font-size:15px; font-weight:700; color:var(--primary);" id="grandTotal">₹0.00</span>
+                <span id="splitDiffContainer" class="split-only hidden" style="font-size:15px; font-weight:700; display:flex;">
+                    <strong id="splitDifference" style="color:var(--primary);">₹0.00</strong>
+                </span>
             </div>
-            <div id="personalShareContainer">
-                <div id="personalShareWrapper" class="recipient-row swipe-wrapper">
-                    <div class="swipe-content recipient-swipe-content">
-                        <div class="static-label-box">My Share (Personal)</div>
-                        <input type="text" inputmode="none" id="personalShare" class="split-amt-input math-input" placeholder="0.00" autocomplete="off" autocorrect="off" spellcheck="false">
-                    </div>
-                </div>
-            </div>
-            <div id="recipientsContainer"></div>
-        </div>
-
-        <div class="total-wrapper" id="totalWrapper">
-            <span style="font-size:12px;font-weight:700;color:var(--text-label);">Total Amount:</span>
-            <span style="font-size:15px;font-weight:700;color:var(--primary);" id="grandTotal">₹0.00</span>
         </div>
 
         <div id="multiTxnNav" class="hidden" style="flex-direction:column;gap:12px;">
@@ -1464,12 +1469,35 @@ function handleBikeTaxiTripIncrement() {
                 if (state) { recurringMode = true; if (batchMode) setMode('batch', false);
                     document.getElementById('recurringOptions').classList.remove('hidden'); } else { recurringMode = false;
                     document.getElementById('recurringOptions').classList.add('hidden'); }
-            } else if (mode === 'split') {
+              } else if (mode === 'split') {
                 splitMode = state;
                 if (splitMode && selfTransferMode) setMode('selfTransfer', false);
                 document.getElementById('splitPanel').style.display = splitMode ? 'block' : 'none';
+                
+                // Toggle visibility of both the Difference label and amount
+                const diffContainer = document.getElementById('splitDiffContainer');
+                const diffLabel = document.getElementById('splitDiffLabel');
+                if (diffContainer && diffLabel) {
+                    diffContainer.classList.toggle('hidden', !splitMode);
+                    diffLabel.classList.toggle('hidden', !splitMode);
+                }
+
+                const spentForSel = document.getElementById('spent_for');
+                const spentForOther = document.getElementById('spent_for_other');
+                const spentForGroup = document.getElementById('spentForGroup');
+                
+                spentForSel.disabled = splitMode;
+                spentForGroup.classList.toggle('hidden', splitMode);
+                
+                if (splitMode) {
+                    spentForOther.disabled = true;
+                } else if (spentForSel.value === 'Other') {
+                    spentForOther.disabled = false;
+                }
+
                 if (splitMode) { if (window.calcSplitDifference) window.calcSplitDifference(); }
             } else if (mode === 'selfTransfer') {
+
                 selfTransferMode = state;
                 if (selfTransferMode) {
                     if (bikeTaxiMode) bikeTaxiMode = false;
@@ -3488,6 +3516,11 @@ setMode = function(mode, state) {
     setRefPlaceholder();
     bikeTaxiMode = false;
     if (typeof updateTripCounterUI === 'function') updateTripCounterUI();
+              const diffContainer = document.getElementById('splitDiffContainer');
+    if (diffContainer) {
+        diffContainer.classList.add('hidden');
+    }
+
     if (!keepModes) {
         batchMode = false;
         recurringMode = false;
@@ -3521,7 +3554,8 @@ setMode = function(mode, state) {
     document.getElementById('spentSmartRow').classList.remove('has-other');
     document.getElementById('purpose_other').disabled = true;
     document.getElementById('spent_for_other').disabled = true;
-
+document.getElementById('spent_for').disabled = false;
+document.getElementById('spentForGroup').classList.remove('hidden');
     // Reset standard payment row
     document.getElementById('paymentContainer').innerHTML = "";
     createPaymentRow();
@@ -4872,6 +4906,9 @@ window.editQueue = (idx) => {
                 } else {
                     setSelectOrOther(spentForSelect, otherInput, 'spentSmartRow', 'Self');
                 }
+                          spentForSelect.disabled = true;
+                otherInput.disabled = true;
+
             };
 
             window.calcSplitDifference = function() {
