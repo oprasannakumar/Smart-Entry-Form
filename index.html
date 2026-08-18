@@ -882,8 +882,13 @@
             <label style="margin-top:12px;">Spent For</label>
             <div id="spentSmartRow" class="smart-row">
                 <select id="spent_for" required onchange="toggleSmartOther(this, 'spent_for_other', 'spentSmartRow')">
-                    <option value="">Select</option>
-                    <option>Self</option><option>House</option><option>Mother</option><option>Grand Father</option><option>Chinnama</option><option>Family</option><option>Pedhamma</option><option>Vasavi</option><option value="Other">Other</option>
+<option value="">Select</option>
+<option>Self</option>
+<option>House</option>
+<option>Mother</option>
+<option>Grand Father</option><option>Chinnama</option><option>Family</option><option>Pedhamma</option><option>Vasavi</option>
+<option>Split</option>
+<option value="Other">Other</option>
                 </select>
                 <input id="spent_for_other" class="hidden" placeholder="Specify Name" required disabled style="margin-top:0;">
                 <div class="err-msg">Entity required</div>
@@ -2522,6 +2527,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                         if (selfTransferMode) window.calcStTotals();
                         else updateGrandTotal();
                         if (window.calcSplitDifference) window.calcSplitDifference(); 
+                      if (window.checkSplitSpentFor) window.checkSplitSpentFor();
                     }, 200);
                 } else if (currentX < -50 && !canDelete) {
                     content.style.transition = "transform 0.15s ease";
@@ -4849,6 +4855,24 @@ window.editQueue = (idx) => {
         (function() {
             const recipientsContainer = document.getElementById('recipientsContainer');
             const globalModeBtn = document.getElementById('globalSplitMode');
+                        window.checkSplitSpentFor = function() {
+                if (!splitMode) return;
+                const hasPersonalShare = document.getElementById('personalShareWrapper') !== null;
+                const recipientRows = document.querySelectorAll('.recipient-row:not(#personalShareWrapper)');
+                const totalParties = (hasPersonalShare ? 1 : 0) + recipientRows.length;
+                const spentForSelect = document.getElementById('spent_for');
+                const otherInput = document.getElementById('spent_for_other');
+                
+                if (totalParties > 1) {
+                    setSelectOrOther(spentForSelect, otherInput, 'spentSmartRow', 'Split');
+                } else if (totalParties === 1 && !hasPersonalShare) {
+                    const sel = recipientRows[0].querySelector('.recipient-select');
+                    const name = sel.value === 'Other' ? recipientRows[0].querySelector('.recipient-other-input').value : sel.value;
+                    setSelectOrOther(spentForSelect, otherInput, 'spentSmartRow', name || 'Self');
+                } else {
+                    setSelectOrOther(spentForSelect, otherInput, 'spentSmartRow', 'Self');
+                }
+            };
 
             window.calcSplitDifference = function() {
                 if (!splitMode) return;
@@ -4910,15 +4934,24 @@ window.editQueue = (idx) => {
                 const select = rowDiv.querySelector('.recipient-select');
                 const otherWrapper = rowDiv.querySelector('.recipient-other-wrapper');
                 const pickerBtn = rowDiv.querySelector('.btn-contact-picker');
-                select.onchange = () => {
+                                select.onchange = () => {
                     const isOther = select.value === 'Other';
                     otherWrapper.classList.toggle('hidden', !isOther);
                     if (isOther) otherWrapper.querySelector('input').focus();
+                    if (window.checkSplitSpentFor) window.checkSplitSpentFor();
                 };
+                const recipientOtherInput = rowDiv.querySelector('.recipient-other-input');
+                if (recipientOtherInput) {
+                    recipientOtherInput.addEventListener('input', () => {
+                        if (window.checkSplitSpentFor) window.checkSplitSpentFor();
+                    });
+                }
+
                 if (pickerBtn) { pickerBtn.onclick = () => selectFromContacts(otherWrapper.querySelector('input')); }
                 recipientsContainer.appendChild(rowDiv);
                 enableSwipeToDelete(rowDiv, 0);
                 if (window.calcSplitDifference) window.calcSplitDifference();
+              if (window.checkSplitSpentFor) window.checkSplitSpentFor();
             };
 
             async function selectFromContacts(targetInput) {
@@ -4927,9 +4960,11 @@ window.editQueue = (idx) => {
                 try {
                     const contacts = await navigator.contacts.select(props, opts);
                     if (contacts.length > 0 && contacts[0].name && contacts[0].name.length > 0) {
-                        targetInput.value = contacts[0].name[0];
+                                                targetInput.value = contacts[0].name[0];
                         showToast("👤 Contact imported");
+                        if (window.checkSplitSpentFor) window.checkSplitSpentFor();
                     }
+
                 } catch (ex) {
                     if (ex.name !== 'AbortError') { console.error('Contact Picker Error:', ex); showToast("Failed to open contacts", "var(--danger)"); }
                 }
@@ -5001,11 +5036,13 @@ window.editQueue = (idx) => {
                     </div>
                   </div>
                 `;
-                        enableSwipeToDelete(document.getElementById('personalShareWrapper'), 0);
+                                                enableSwipeToDelete(document.getElementById('personalShareWrapper'), 0);
                         if (window.calcSplitDifference) window.calcSplitDifference();
+                        if (window.checkSplitSpentFor) window.checkSplitSpentFor(); // ADDED THIS
                     }
                 }
             };
+
 
             window.clearSplitPanel = () => {
                 window.restorePersonalShare();
@@ -5014,6 +5051,7 @@ window.editQueue = (idx) => {
                 recipientsContainer.innerHTML = '';
                 globalModeBtn.textContent = 'Value';
                 if (window.calcSplitDifference) window.calcSplitDifference();
+              if (window.checkSplitSpentFor) window.checkSplitSpentFor();
             };
 
             const initialPersonalShare = document.getElementById('personalShareWrapper');
