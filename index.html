@@ -1923,12 +1923,24 @@ function handleBikeTaxiTripIncrement() {
 
                 document.getElementById('flow').value = fs.flow || '';
 
-                document.getElementById('paymentContainer').innerHTML = '';
-                if (fs.payments && fs.payments.length) {
-                    fs.payments.forEach(p => {
-                        createPaymentRow({ type: p.type, acc: p.account, amt: p.amount, denominations: p.denominations });
+                        document.getElementById('paymentContainer').innerHTML = '';
+        if (fs.payments && fs.payments.length) {
+            fs.payments.forEach(p => {
+                let denoms = p.denominations;
+                
+                // Reverse the sign of denominations if the flow is withdraw
+                if (denoms && fs.flow === 'withdraw') {
+                    let reversedDenoms = {};
+                    Object.keys(denoms).forEach(key => {
+                        reversedDenoms[key] = denoms[key] ? -denoms[key] : 0;
                     });
+                    denoms = reversedDenoms;
                 }
+
+                createPaymentRow({ type: p.type, acc: p.account, amt: p.amount, denominations: denoms });
+            });
+        }
+
 
                 if (fs.split_enabled) {
                     setMode('split', true);
