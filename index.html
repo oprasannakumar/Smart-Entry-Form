@@ -2397,7 +2397,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             }
         }
 
-        function createStRow(containerId, initial) {
+                function createStRow(containerId, initial) {
             const container = document.getElementById(containerId);
             const wrapper = document.createElement('div');
             wrapper.className = 'payment-row-wrapper swipe-wrapper';
@@ -2483,8 +2483,13 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             enableSwipeToDelete(wrapper, 1);
 
             if (initial) {
-                tSel.value = initial.type;
+                // Make type matching case-insensitive for Self Transfer rows
+                if (initial.type) {
+                    const typeMatch = Array.from(tSel.options).find(opt => opt.value.toLowerCase() === String(initial.type).toLowerCase());
+                    tSel.value = typeMatch ? typeMatch.value : initial.type;
+                }
                 tSel.dispatchEvent(new Event('change'));
+
                 if (initial.account) {
                     const optionExists = Array.from(aSel.options).some(opt => opt.value.toLowerCase() === initial.account.toLowerCase());
                     if (optionExists) {
@@ -2497,7 +2502,9 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                     }
                 }
                 if (initial.amount) amtInp.value = initial.amount;
-                if (initial.denominations && initial.type === 'Cash') {
+                
+                // Allow denominations to show even if the backend capitalized it as 'CASH'
+                if (initial.denominations && String(initial.type || '').toLowerCase() === 'cash') {
                     Object.entries(initial.denominations).forEach(([val, count]) => {
                         const input = cashBlock.querySelector(`.row-denom-input[data-val="${val}"]`);
                         if (input) input.value = count || '';
@@ -2506,6 +2513,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 aSel.dispatchEvent(new Event('change'));
             }
         }
+
 
         document.getElementById('btnAddSourceRow').onclick = () => createStRow('stSourcesContainer');
         document.getElementById('btnAddDestRow').onclick = () => createStRow('stDestContainer');
