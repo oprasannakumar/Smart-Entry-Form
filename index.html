@@ -1987,16 +1987,69 @@ function handleBikeTaxiTripIncrement() {
             return JSON.parse(localStorage.getItem('daily_txns') || '{"date":"","txns":[]}');
         }
 
-        function renderSessionDashboard() {
-            const data = getDailyTxns();
-            let spent = 0, income = 0;
-            data.txns.forEach(t => {
-                if (t.formState && t.formState.self_transfer) return;
-                if (t.flow === 'withdraw') spent += t.amount;
-                else if (t.flow === 'deposit') income += t.amount;
+        function renderSelectedBorrowerDetails() {
+            const idx = document.getElementById('borrowerSelect').value;
+            const detailsCard = document.getElementById('borrowerDetailsCard');
+            const txnContainer = document.getElementById('borrowerTxnContainer');
+            const txnListEl = document.getElementById('borrowerTxnList');
+
+            if (idx === "") {
+                detailsCard.classList.add('hidden');
+                txnContainer.classList.add('hidden');
+                return;
+            }
+
+            const borrower = globalBorrowersData[idx];
+            if (!borrower) return;
+
+            // Render Totals
+            document.getElementById('borrowerGivenVal').textContent = `₹${borrower.given.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('borrowerReceivedVal').textContent = `₹${borrower.received.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            
+            const diffEl = document.getElementById('borrowerDiffVal');
+            diffEl.textContent = `₹${Math.abs(borrower.difference).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            diffEl.style.color = borrower.difference >= 0 ? 'var(--primary)' : 'var(--danger)';
+            detailsCard.classList.remove('hidden');
+
+            // Extract Date Range from the modal's Flatpickr instance
+            let startDate = "", endDate = "";
+            if (borrowerDatePickerInstance && borrowerDatePickerInstance.selectedDates.length > 0) {
+                startDate = borrowerDatePickerInstance.formatDate(borrowerDatePickerInstance.selectedDates[0], "Y-m-d");
+                endDate = borrowerDatePickerInstance.selectedDates.length > 1 
+                    ? borrowerDatePickerInstance.formatDate(borrowerDatePickerInstance.selectedDates[1], "Y-m-d") 
+                    : startDate;
+            }
+
+            const filteredTxns = globalLoanTxns.filter(t => {
+                const matchesBorrower = t.borrower.toLowerCase().includes(borrower.name.toLowerCase()) || 
+                                       t.narration.toLowerCase().includes(borrower.name.toLowerCase());
+                const matchesDate = (!startDate || (t.date >= startDate && t.date <= endDate));
+                return matchesBorrower && matchesDate;
             });
-            document.getElementById('ballSpentVal').textContent = '-₹' + Number(spent).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById('ballIncomeVal').textContent = '+₹' + Number(income).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            if (filteredTxns.length > 0) {
+                txnListEl.innerHTML = filteredTxns.map(t => {
+                    // Determine if it's a Given or Received transaction
+                    const isGiven = t.given > 0;
+                    const amountVal = isGiven ? t.given : t.received;
+                    const amountColor = isGiven ? 'var(--danger)' : 'var(--primary)';
+                    const prefix = isGiven ? '-₹' : '+₹';
+
+                    return `
+                        <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+                            <div>
+                                <strong style="color:var(--text-main); display:block;">${t.narration || 'Loan Entry'}</strong>
+                                <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
+                            </div>
+                            <strong style="color:${amountColor};">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                    `;
+                }).join('');
+                txnContainer.classList.remove('hidden');
+            } else {
+                txnListEl.innerHTML = `<span style="color:var(--text-label); font-size:11px;">No transactions found for this date range.</span>`;
+                txnContainer.classList.remove('hidden');
+            }
         }
 
         function addDailyTxn(narration, amount, flow, details, fullHtml, ref, formState) {
@@ -5738,15 +5791,22 @@ function showInvoiceSuggestions(filterText) {
             });
 
             if (filteredTxns.length > 0) {
-                txnListEl.innerHTML = filteredTxns.map(t => `
-                    <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-                        <div>
-                            <strong style="color:var(--text-main); display:block;">${t.narration}</strong>
-                            <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
+                txnListEl.innerHTML = filteredTxns.map(t => {
+                    const isGiven = t.given > 0;
+                    const amountVal = isGiven ? t.given : t.received;
+                    const amountColor = isGiven ? 'var(--danger)' : 'var(--primary)';
+                    const prefix = isGiven ? '-₹' : '+₹';
+
+                    return `
+                        <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+                            <div>
+                                <strong style="color:var(--text-main); display:block;">${t.narration || 'Loan Entry'}</strong>
+                                <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
+                            </div>
+                            <strong style="color:${amountColor};">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
                         </div>
-                        <strong style="color:var(--secondary);">₹${t.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
                 txnContainer.classList.remove('hidden');
             } else {
                 txnListEl.innerHTML = `<span style="color:var(--text-label); font-size:11px;">No transactions found for this date range.</span>`;
