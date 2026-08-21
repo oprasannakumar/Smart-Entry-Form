@@ -773,31 +773,15 @@
                     <div id="statusDot" title="Network Status"></div>
                     <h3>Smart Entry Form</h3>
                     <div class="right-btns">
-                        <!-- NEW: Compact Balance Pill Button -->
-                        <button type="button" id="balancePillBtn" title="View Account Balances" onclick="toggleBalanceDropdown()" style="width: auto; padding: 0 10px; height: 32px; border-radius: 16px; font-size: 11px; font-weight: 700; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                            <span>💰</span>
-                        </button>
-        
                         <div class="nav-fab-container" id="navFab">
                             <button type="button" id="fabToggle" title="Navigation">🔗</button>
                             <div class="nav-options">
-                                <a href="#" class="nav-item" onclick="openRecurringManager()">⏳ Recurring</a>
-                                <a href="#" class="nav-item" onclick="openTemplateManager()">📋 Custom Templates</a>
+                                <a href="#" class="nav-item" onclick="openBalanceModal(); return false;">💰 Account Balances</a>
+                                <a href="#" class="nav-item" onclick="openRecurringManager(); return false;">⏳ Recurring</a>
+                                <a href="#" class="nav-item" onclick="openTemplateManager(); return false;">📋 Custom Templates</a>
                             </div>
                         </div>
                         <button type="button" id="themeToggle">🌙</button>
-                    </div>
-        
-                    <!-- NEW: Floating Dropdown Card (Zero Form Space Impact) -->
-                    <div id="balanceDropdownCard" class="hidden" style="position: absolute; right: 0; top: 42px; width: 380px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 1000; font-size: 11px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
-                            <span style="font-weight: 700; color: var(--secondary);">Accounts & Credit Overview</span>
-                            <span style="cursor: pointer; font-size: 14px; font-weight: bold;" onclick="toggleBalanceDropdown()">✕</span>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;">
-                            <div id="savingsBalanceList"><strong>Savings:</strong> <span style="color: var(--text-label);">Loading...</span></div>
-                            <div id="creditBalanceList" style="border-top: 1px dashed var(--border-color); padding-top: 6px;"><strong>Credit Cards:</strong> <span style="color: var(--text-label);">Loading...</span></div>
-                        </div>
                     </div>
                 </div>
         <div class="toggle-row">
@@ -823,7 +807,25 @@
             </select>
             <input type="number" id="customDays" placeholder="Days" class="hidden" min="1" style="margin-top:6px;">
         </div>
-
+<!-- Account Balances Modal -->
+<div id="balanceModal" class="modal hidden">
+        <div class="confirm-card" style="max-width:95%;width:300px;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+                <h3 style="margin:0;font-size:16px;color:var(--secondary);">💰 Accounts & Credit Overview</h3>
+                <span style="cursor:pointer;font-size:18px;" onclick="closeBalanceModal()">✕</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px;max-height:65vh;overflow-y:auto;padding-right:4px;">
+                <div id="modalSavingsContainer">
+                    <strong style="font-size:12px;color:var(--text-label);display:block;margin-bottom:6px;">Savings Accounts:</strong>
+                    <div id="modalSavingsList" style="display:flex;flex-direction:column;gap:6px;">Loading...</div>
+                </div>
+                <div id="modalCreditContainer" style="border-top:1px dashed var(--border-color);padding-top:10px;">
+                    <strong style="font-size:12px;color:var(--text-label);display:block;margin-bottom:6px;">Credit Cards:</strong>
+                    <div id="modalCreditList" style="display:flex;flex-direction:column;gap:6px;">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
         <!-- ALWAYS IN SAME ROW: DATE AND REFERENCE ID -->
         <div class="grid-2">
             <div style="display:flex;flex-direction:column;">
@@ -5427,46 +5429,80 @@ document.getElementById('invoice_no').addEventListener('blur', async function() 
     }
 });
 
-        function toggleBalanceDropdown() {
-            const dropdown = document.getElementById('balanceDropdownCard');
-            dropdown.classList.toggle('hidden');
+function openBalanceModal() {
+            // Close the navigation menu dropdown if it's open
+            document.getElementById('navFab').classList.remove('active');
+            document.getElementById('balanceModal').classList.remove('hidden');
         }
 
-        // Close dropdown when tapping outside
-        document.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('balanceDropdownCard');
-            const btn = document.getElementById('balancePillBtn');
-            if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                dropdown.classList.add('hidden');
-            }
+        function closeBalanceModal() {
+            document.getElementById('balanceModal').classList.add('hidden');
+        }
+
+        // Close modal on background click
+        document.getElementById('balanceModal').addEventListener('click', function(e) {
+            if (e.target === this) closeBalanceModal();
         });
 
-async function fetchAccountBalances() {
+        async function fetchAccountBalances() {
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getAccountBalances`);
                 const data = await res.json();
                 
-                const savingsEl = document.getElementById('savingsBalanceList');
-                const creditEl = document.getElementById('creditBalanceList');
+                const savingsListEl = document.getElementById('modalSavingsList');
+                const creditListEl = document.getElementById('modalCreditList');
+
+                // Pill container style (flexbox with wrapping, tight gaps)
+                const pillFlexStyle = `display: flex; flex-wrap: wrap; gap: 6px; align-items: center;`;
 
                 if (data.savings && data.savings.length > 0) {
-                    const savingsHtml = data.savings.map(s => `<span style="display:inline-block; margin-right:8px; background:var(--bg-card); padding:2px 6px; border-radius:6px; border:1px solid var(--border-color); margin-top:2px;">${s.name}: <strong style="color:var(--primary);">₹${s.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></span>`).join('');
-                    savingsEl.innerHTML = `<strong>Savings:</strong><div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;">${savingsHtml}</div>`;
+                    let totalSavings = 0;
+                    const savingsHtml = data.savings.map(s => {
+                        totalSavings += s.balance;
+                        return `
+                            <div style="background:var(--bg-input); padding:5px 10px; border-radius:16px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:4px; font-size:8px;">
+                                <span style="font-weight:300; color:var(--text-main);">${s.name}:</span>
+                                <strong style="color:var(--primary);">₹${s.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                            </div>
+                        `;
+                    }).join('');
+
+                    // Add a "Total" pill at the end for savings
+
+                    savingsListEl.innerHTML = `<div style="${pillFlexStyle}">${savingsHtml}</div>`;
                 } else {
-                    savingsEl.innerHTML = `<strong>Savings:</strong> <span style="color:var(--text-label);">No data found</span>`;
+                    savingsListEl.innerHTML = `<span style="color:var(--text-label); font-size:8px;">No savings data found</span>`;
                 }
 
                 if (data.credit && data.credit.length > 0) {
-                    const creditHtml = data.credit.map(c => `<span style="display:inline-block; margin-right:8px; background:var(--bg-card); padding:2px 6px; border-radius:6px; border:1px solid var(--border-color); margin-top:2px;">${c.name}: <strong style="color:var(--danger);">₹${c.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></span>`).join('');
-                    creditEl.innerHTML = `<strong>Credit Cards:</strong><div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;">${creditHtml}</div>`;
+                    let totalCredit = 0;
+                    const creditHtml = data.credit.map(c => {
+                        totalCredit += c.balance;
+                        return `
+                            <div style="background:var(--bg-input); padding:5px 10px; border-radius:16px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:4px; font-size:8px;">
+                                <span style="font-weight:300; color:var(--text-main);">${c.name}:</span>
+                                <strong style="color:var(--danger);">₹${c.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                            </div>
+                        `;
+                    }).join('');
+
+                    // Add a "Total" pill at the end for credit cards
+                    const totalCreditPill = `
+                        <div style="background:var(--bg-input); padding:5px 10px; border-radius:16px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:4px; font-size:8px;">
+                            <span style="font-weight:700; color:var(--text-main);">Total:</span>
+                            <strong style="color:var(--danger);">₹${totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                    `;
+
+                    creditListEl.innerHTML = `<div style="${pillFlexStyle}">${creditHtml}${totalCreditPill}</div>`;
                 } else {
-                    creditEl.innerHTML = `<strong>Credit Cards:</strong> <span style="color:var(--text-label);">No data found</span>`;
+                    creditListEl.innerHTML = `<span style="color:var(--text-label); font-size:8px;">No credit card data found</span>`;
                 }
 
             } catch (err) {
                 console.error("Failed to load balances:", err);
             }
-}
+        }
 
 let cachedInvoicesForDate = [];
 
