@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Smart Entry Form">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" id="flatpickr-theme" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     :root {
@@ -811,9 +811,9 @@
         <!-- ALWAYS IN SAME ROW: DATE AND REFERENCE ID -->
         <div class="grid-2">
             <div style="display:flex;flex-direction:column;">
-                <label style="margin-top:0;">Date</label>
-                <input type="date" id="date" required>
-                <div class="err-msg">Selection required</div>
+                    <label style="margin-top:0;">Date</label>
+                    <input type="text" id="date" placeholder="Select Date" required>
+                    <div class="err-msg">Selection required</div>
             </div>
             <div id="referenceContainer" style="display:flex;flex-direction:column;">
                 <label style="margin-top:0;">Reference</label>
@@ -1465,6 +1465,14 @@ document.querySelectorAll('#mathKeyboard .kb-key').forEach(btn => {
             const isDark = document.body.classList.toggle('dark');
             setTimeout(() => { themeToggle.textContent = isDark ? '☀️' : '🌙'; }, 150);
             setTimeout(() => { themeToggle.classList.remove('theme-rotate'); }, 500);
+            
+            // Swap the Flatpickr stylesheet to match the theme
+            const fpTheme = document.getElementById('flatpickr-theme');
+            if (isDark) {
+                fpTheme.href = "https://npmcdn.com/flatpickr/dist/themes/dark.css";
+            } else {
+                fpTheme.href = "https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css";
+            }
         };
 
         document.getElementById('biketaxiBtn').addEventListener('click', () => setMode('biketaxi', !bikeTaxiMode));
@@ -1612,13 +1620,46 @@ function handleBikeTaxiTripIncrement() {
                 renderSessionDashboard();
             }
         });
+ // --- Initialize Flatpickr for the Main Form Date ---
+ let mainDatePicker = flatpickr("#date", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "j-M-Y",
+            disableMobile: true, // Forces smooth custom calendar on mobile
+            defaultDate: getTodayIST(),
+            onChange: function(selectedDates, dateStr, instance) {
+                document.getElementById('date').dispatchEvent(new Event('change'));
+            }
+        });
+
+        // OPTIMIZED MAGIC TRICK: Only sync Flatpickr if the change came from your code,
+        // preventing the laggy infinite feedback loop!
+        const dateInputEl = document.getElementById('date');
+        const originalValueDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        Object.defineProperty(dateInputEl, 'value', {
+            get: function() { return originalValueDesc.get.call(this); },
+            set: function(val) {
+                originalValueDesc.set.call(this, val);
+                if (this._flatpickr) {
+                    // Check what date flatpickr currently holds
+                    const fpCurrentStr = this._flatpickr.selectedDates.length > 0 
+                        ? this._flatpickr.formatDate(this._flatpickr.selectedDates[0], "Y-m-d") 
+                        : "";
+                    // Only force a redraw if the value is ACTUALLY different
+                    if (fpCurrentStr !== String(val)) {
+                        this._flatpickr.setDate(val, false);
+                    }
+                }
+            }
+        });
 
         // Initialize Flatpickr on the new input
         let loggerDateRange = flatpickr("#loggerDatePicker", {
             mode: "range",
-            dateFormat: "Y-m-d",      
-            altInput: true,           
-            altFormat: "j-M-Y",       
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "j-M-Y",
+            disableMobile: true, // Forces smooth custom calendar on mobile
             defaultDate: getTodayIST(),
             onChange: function(selectedDates, dateStr, instance) {
                 if (selectedDates.length === 1) {
