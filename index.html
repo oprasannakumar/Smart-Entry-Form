@@ -2036,12 +2036,12 @@ function handleBikeTaxiTripIncrement() {
                     const prefix = isGiven ? '-₹' : '+₹';
 
                     return `
-                        <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-                            <div>
-                                <strong style="color:var(--text-main); display:block;">${t.narration || 'Loan Entry'}</strong>
+                        <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
+                            <div style="min-width:0; flex:1; padding-right:4px;">
+                                <strong style="color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.narration || 'Loan Entry'}</strong>
                                 <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
                             </div>
-                            <strong style="color:${amountColor};">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                            <strong style="color:${amountColor}; white-space:nowrap; display:inline-flex; justify-content:flex-end; min-width:200px; flex-shrink:0;">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
                         </div>
                     `;
                 }).join('');
