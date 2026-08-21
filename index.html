@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Smart Entry Form">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     :root {
@@ -744,7 +745,15 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
-    
+    .daily-txn-content {
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+    .daily-txn-content.selected {
+      background: linear-gradient(rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.12)), var(--bg-card) !important;
+      border-color: var(--secondary) !important;
+      box-shadow: inset 0 0 0 1px var(--secondary);
+    }
   </style>
 </head>
 <body>
@@ -1017,27 +1026,39 @@
 
 <!-- Daily Transactions Log Modal with Search & Category Filter -->
 <div id="todayTxnModal" class="modal hidden">
-    <div class="confirm-card" style="max-width:95%;width:450px;padding:18px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:10px;">
-            <h3 id="dailyLogTitle" style="margin:0;font-size:15px;">Selected Date Log</h3>
-            <span style="cursor:pointer;font-size:18px;" onclick="document.getElementById('todayTxnModal').classList.add('hidden')">✕</span>
-        </div>
-
-        <!-- Inline Search & Filter Toolbar -->
-        <div class="modal-filter-bar">
-            <div class="modal-search-wrapper">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="logSearchInput" placeholder="Search narration, account, amount..." autocomplete="off">
-                <button type="button" id="clearLogSearch" class="btn-clear-search hidden">✕</button>
+        <div class="confirm-card" style="max-width:95%;width:450px;padding:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:10px;">
+                <h3 id="dailyLogTitle" style="margin:0;font-size:15px;">Selected Date Log</h3>
+                <span style="cursor:pointer;font-size:18px;" onclick="document.getElementById('todayTxnModal').classList.add('hidden'); exitSelectionMode();">✕</span>
             </div>
-            <div id="logCategoryFilterContainer" class="category-chips-row">
-                <!-- Category chips generated dynamically in JS -->
+    
+            <!-- Inline Search & Filter Toolbar -->
+            <div class="modal-filter-bar">
+                <input type="text" id="loggerDatePicker" placeholder="Select Date or Range" style="height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 8px;">
+                <div class="modal-search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="logSearchInput" placeholder="Search narration, account, amount..." autocomplete="off">
+                    <button type="button" id="clearLogSearch" class="btn-clear-search hidden">✕</button>
+                </div>
+                <div id="logCategoryFilterContainer" class="category-chips-row"></div>
+            </div>
+    
+            <!-- Transaction List -->
+            <div id="todayTxnList" style="max-height:50vh;overflow-y:auto;font-size:12px;padding-right:5px;overflow-x:hidden;"></div>
+    
+            <!-- Dynamic Summary Bar -->
+            <div id="loggerSummaryBar" style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:12px; margin-top:10px;">
+                <div style="font-size:12px; font-weight:600; line-height:1.4;">
+                    <span style="color:var(--primary)">In: ₹<span id="logInVal">0.00</span></span><br>
+                    <span style="color:var(--danger)">Out: ₹<span id="logOutVal">0.00</span></span>
+                </div>
+                <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end;">
+                    <div style="font-size:14px; font-weight:700; margin-bottom:4px; color:var(--text-main);">Net: <span id="logNetVal">₹0.00</span></div>
+                    <button type="button" id="cancelSelectionBtn" onclick="exitSelectionMode()" class="hidden" style="height:24px; padding:0 12px; font-size:11px; background:rgba(248,113,113,0.1); border:1px solid var(--danger); color:var(--danger); border-radius:6px; cursor:pointer; font-weight:600; outline:none;">Clear</button>
+                </div>
             </div>
         </div>
-
-        <div id="todayTxnList" style="max-height:60vh;overflow-y:auto;font-size:12px;padding-right:5px;overflow-x:hidden;"></div>
     </div>
-</div>
 
 
     <!-- Transaction Details Modal -->
@@ -1169,12 +1190,15 @@
     </div>
 </div>
 
-
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtxq-LrJYu21QO07vBWWQrWhHtQ7hpkvYHeTsMAG0eAj3am6Tn0rryT5jDnRc-SwO-/exec";
         const IMAGE_PROCESS_URL = "https://script.google.com/macros/s/AKfycbyJUcI7u2YjRFzpemfGxXODskItJ-i6Eaz8HKfEF2b5qD2-9dZ2GtEsDmHzt6IaLtDY/exec";
         const DELETE_URL = "https://script.google.com/macros/s/AKfycbz5jwjriTJB2rqI7G66VmtdLTBGR0tQ4j_2iRKDubEERdR-pHI-Sg5OiORQxqgXsg_G/exec";
-
+        let isSelectionMode = false;
+        let selectedTxns = new Set();
+        let currentFilteredTxns = [];
+        let justLongPressed = false; // Debounce flag to prevent tap immediately after long-press
         // --- GET STRICT IST DATE ---
         function getTodayIST() {
             const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
@@ -1582,20 +1606,48 @@ function handleBikeTaxiTripIncrement() {
         // --- DYNAMIC LOGS & DASHBOARD FETCHING ---
         document.getElementById('date').addEventListener('change', (e) => {
             const selectedDate = e.target.value;
-            let data = { date: selectedDate, txns: [] };
-            localStorage.setItem('daily_txns', JSON.stringify(data));
-            renderSessionDashboard();
-            document.getElementById('dailyLogTitle').textContent = `Logs for ${formatDisplayDate(selectedDate)}`;
-            fetchLogsForDate(selectedDate);
+            let data = JSON.parse(localStorage.getItem('daily_txns') || '{"date":"","txns":[]}');
+            if (data.date !== selectedDate) {
+                localStorage.setItem('daily_txns', JSON.stringify({ date: selectedDate, txns: [] }));
+                renderSessionDashboard();
+            }
         });
 
-        async function fetchLogsForDate(dateStr) {
+        // Initialize Flatpickr on the new input
+        let loggerDateRange = flatpickr("#loggerDatePicker", {
+            mode: "range",
+            dateFormat: "Y-m-d",      
+            altInput: true,           
+            altFormat: "j-M-Y",       
+            defaultDate: getTodayIST(),
+            onChange: function(selectedDates, dateStr, instance) {
+                if (selectedDates.length === 1) {
+                    // Single date selected
+                    const singleDate = instance.formatDate(selectedDates[0], "Y-m-d");
+                    fetchLogsForDateRange(singleDate, singleDate);
+                } else if (selectedDates.length === 2) {
+                    // Date range selected
+                    const startDate = instance.formatDate(selectedDates[0], "Y-m-d");
+                    const endDate = instance.formatDate(selectedDates[1], "Y-m-d");
+                    fetchLogsForDateRange(startDate, endDate);
+                }
+            }
+        });
+
+        async function fetchLogsForDateRange(startDate, endDate) {
             isLoadingLogs = true;
             if (!document.getElementById('todayTxnModal').classList.contains('hidden')) renderDailyTxnsModal();
-            document.getElementById('ballSpentVal').textContent = "↻";
-            document.getElementById('ballIncomeVal').textContent = "↻";
+            
+            // Update Title
+            if (startDate === endDate) {
+                document.getElementById('dailyLogTitle').textContent = `Logs for ${formatDisplayDate(startDate)}`;
+            } else {
+                document.getElementById('dailyLogTitle').textContent = `${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`;
+            }
+
             try {
-                const res = await fetch(`${SCRIPT_URL}?action=getTransactionsByDate&date=${dateStr}`);
+                // NOTE: We pass both startDate and endDate to the backend
+                const res = await fetch(`${SCRIPT_URL}?action=getTransactionsByDateRange&startDate=${startDate}&endDate=${endDate}`);
                 const rows = await res.json();
 
                 let txns = [];
@@ -1615,12 +1667,12 @@ function handleBikeTaxiTripIncrement() {
                                     stGroups[ref] = { refid: ref, date: r.date, narration: cleanNarration, legs: [] };
                                 }
                                 stGroups[ref].legs.push(r);
-                                r._processedAsST = true; // Mark as handled so normal loop skips it
+                                r._processedAsST = true; 
                             }
                         }
                     });
 
-                    // Pass 2: Process normal transactions safely
+                    // Pass 2: Process normal transactions securely
                     txns = rows.filter(r => !r._processedAsST).map(r => {
                         const isWithdraw = r.withdrawn > 0;
                         const amount = isWithdraw ? r.withdrawn : r.deposit;
@@ -1704,11 +1756,12 @@ function handleBikeTaxiTripIncrement() {
 
                         return {
                             id: r.refId || r.refid,
+                            id: r.refId || r.refid,
                             narration: r.narration,
                             amount: amount,
                             flow: flow,
                             details: details,
-                            fullHtml: fullHtml,
+                            fullHtml: fullHtml, // Ensure you populate this
                             ref: r.refId || r.refid,
                             formState: {
                                 date: (r.date && r.date.includes('T')) ? r.date.split('T')[0] : r.date,
@@ -1800,10 +1853,14 @@ function handleBikeTaxiTripIncrement() {
                 }
 
                 isLoadingLogs = false;
-                localStorage.setItem('daily_txns', JSON.stringify({ date: dateStr, txns: txns }));
+                
+                // Cache it locally so renderDailyTxnsModal can read it
+                const cacheDateStr = (startDate === endDate) ? startDate : `${startDate}_to_${endDate}`;
+                localStorage.setItem('daily_txns', JSON.stringify({ date: cacheDateStr, txns: txns }));
+                
                 renderSessionDashboard();
-
                 if (!document.getElementById('todayTxnModal').classList.contains('hidden')) renderDailyTxnsModal();
+
             } catch (err) {
                 console.error("Fetch Error:", err);
                 isLoadingLogs = false;
@@ -1812,13 +1869,9 @@ function handleBikeTaxiTripIncrement() {
             }
         }
         function getDailyTxns() {
-            const selectedDate = document.getElementById('date').value || getTodayIST();
-            let data = JSON.parse(localStorage.getItem('daily_txns') || '{"date":"","txns":[]}');
-            if (data.date !== selectedDate) {
-                data = { date: selectedDate, txns: [] };
-                localStorage.setItem('daily_txns', JSON.stringify(data));
-            }
-            return data;
+            // Safely return whatever is in local storage. 
+            // Cache clearing is now handled by the Date pickers directly.
+            return JSON.parse(localStorage.getItem('daily_txns') || '{"date":"","txns":[]}');
         }
 
         function renderSessionDashboard() {
@@ -1855,7 +1908,7 @@ function handleBikeTaxiTripIncrement() {
             // Re-fetch backend logs after 500ms
             setTimeout(() => {
                 const currentDate = document.getElementById('date').value || getTodayIST();
-                fetchLogsForDate(currentDate);
+                fetchLogsForDateRange(currentDate, currentDate);
             }, 500);
         } catch (e) { 
             showToast("Failed to connect to backend", "var(--danger)"); 
@@ -2004,10 +2057,10 @@ document.addEventListener('keydown', function(e) {
 
 
         // --- LOG FILTERING STATE & RENDER LOGIC ---
-let activeLogCategory = 'All';
-let logSearchQuery = '';
+        let activeLogCategories = new Set(['All']);
+        let logSearchQuery = '';
 
-function renderCategoryChips(txns) {
+        function renderCategoryChips(txns) {
     const chipsContainer = document.getElementById('logCategoryFilterContainer');
     if (!chipsContainer) return;
 
@@ -2029,108 +2082,139 @@ function renderCategoryChips(txns) {
     categories.forEach(cat => {
         const chip = document.createElement('button');
         chip.type = 'button';
-        chip.className = `chip-btn ${cat === activeLogCategory ? 'active' : ''}`;
+        chip.className = `chip-btn ${activeLogCategories.has(cat) ? 'active' : ''}`;
         chip.textContent = cat;
         chip.onclick = () => {
-            activeLogCategory = cat;
+            if (cat === 'All') {
+                // Clicking 'All' clears everything else
+                activeLogCategories.clear();
+                activeLogCategories.add('All');
+            } else {
+                // Clicking a specific tag removes 'All'
+                activeLogCategories.delete('All');
+                
+                // Toggle the clicked tag
+                if (activeLogCategories.has(cat)) {
+                    activeLogCategories.delete(cat);
+                } else {
+                    activeLogCategories.add(cat);
+                }
+                
+                // If nothing is selected anymore, revert to 'All'
+                if (activeLogCategories.size === 0) {
+                    activeLogCategories.add('All');
+                }
+            }
             renderDailyTxnsModal();
         };
         chipsContainer.appendChild(chip);
     });
 }
-
 function renderDailyTxnsModal() {
     const data = getDailyTxns();
     const listDiv = document.getElementById('todayTxnList');
     listDiv.innerHTML = '';
 
     if (isLoadingLogs) {
-        listDiv.innerHTML = `
-            <div class="empty-state">
-                <div class="spinner"></div>
-                <span style="font-size:12px;font-weight:600;color:var(--text-label);">Fetching transactions...</span>
-            </div>
-        `;
+        listDiv.innerHTML = `<div class="empty-state"><div class="spinner"></div><span style="font-size:12px;font-weight:600;color:var(--text-label);">Fetching transactions...</span></div>`;
+        updateLoggerSummary([]);
         return;
     }
 
     if (data.txns.length === 0) {
-        listDiv.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">📭</div>
-                <span style="font-size:13px;font-weight:600;color:var(--text-main);">No transactions found</span>
-                <span style="font-size:11px;color:var(--text-label);">Entries logged for this date will appear here.</span>
-            </div>
-        `;
+        listDiv.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><span style="font-size:13px;font-weight:600;color:var(--text-main);">No transactions found</span></div>`;
+        updateLoggerSummary([]);
         return;
     }
 
-    // Render filter category chips dynamically
     renderCategoryChips(data.txns);
 
-    // Apply Filter & Search logic
     const filteredTxns = data.txns.filter(t => {
         const fs = t.formState || {};
         const isSelfTransfer = fs.self_transfer;
         const purpose = fs.purpose || '';
 
-        // Category Filter Match
+        // Category Filter Match (Multi-Select)
         let matchesCategory = true;
-        if (activeLogCategory !== 'All') {
-            if (activeLogCategory === 'Self Transfer') matchesCategory = isSelfTransfer;
-            else if (activeLogCategory === 'Expense') matchesCategory = t.flow === 'withdraw' && !isSelfTransfer;
-            else if (activeLogCategory === 'Income') matchesCategory = t.flow === 'deposit' && !isSelfTransfer;
-            else matchesCategory = purpose.toLowerCase() === activeLogCategory.toLowerCase();
+        if (!activeLogCategories.has('All')) {
+            matchesCategory = false; // Assume false until one of its traits matches a selected tag
+
+            if (isSelfTransfer) {
+                if (activeLogCategories.has('Self Transfer')) matchesCategory = true;
+            } else {
+                // If it matches a selected high-level Flow tag
+                if (t.flow === 'withdraw' && activeLogCategories.has('Expense')) matchesCategory = true;
+                if (t.flow === 'deposit' && activeLogCategories.has('Income')) matchesCategory = true;
+                
+                // Or if it matches a selected specific Purpose tag
+                if (purpose && Array.from(activeLogCategories).some(c => c.toLowerCase() === purpose.toLowerCase())) {
+                    matchesCategory = true;
+                }
+            }
         }
 
-        // Text Search Match (Narration, Details, Amount, Ref)
         let matchesSearch = true;
         if (logSearchQuery.trim() !== '') {
-            const query = logSearchQuery.toLowerCase();
-            const narration = (t.narration || '').toLowerCase();
-            const details = (t.details || '').toLowerCase();
-            const amount = String(t.amount || '');
-            const ref = (t.ref || '').toLowerCase();
-            matchesSearch = narration.includes(query) || details.includes(query) || amount.includes(query) || ref.includes(query);
+            const orGroups = logSearchQuery.toLowerCase().split(',').map(g => g.trim()).filter(g => g.length > 0);
+            const searchableText = `
+                ${t.date || ''} 
+                ${t.narration || ''} 
+                ${t.details || ''} 
+                ${t.amount || ''} 
+                ${t.ref || ''} 
+                ${t.flow || ''} 
+                ${fs.purpose || ''} 
+                ${fs.spent_for || ''} 
+                ${fs.invoice_no || ''} 
+                ${(fs.payments || []).map(p => `${p.account} ${p.type} ${p.amount}`).join(' ')}
+                ${(fs.recipients || []).map(r => `${r.name} ${r.amount}`).join(' ')}
+                ${(fs.sources || []).map(s => `${s.account} ${s.type} ${s.amount}`).join(' ')}
+                ${(fs.destinations || []).map(d => `${d.account} ${d.type} ${d.amount}`).join(' ')}
+            `.toLowerCase();
+            matchesSearch = orGroups.some(group => {
+                const andTerms = group.split(/\s+/).filter(q => q.length > 0);
+                return andTerms.every(term => searchableText.includes(term));
+            });
         }
-
         return matchesCategory && matchesSearch;
     });
 
     if (filteredTxns.length === 0) {
-        listDiv.innerHTML = `
-            <div class="empty-state" style="padding:15px;">
-                <div class="empty-icon" style="font-size:24px;">🔍</div>
-                <span style="font-size:12px;font-weight:600;color:var(--text-main);">No matching entries</span>
-                <span style="font-size:10px;color:var(--text-label);">Try adjusting your search or category filter.</span>
-            </div>
-        `;
+        listDiv.innerHTML = `<div class="empty-state" style="padding:15px;"><div class="empty-icon" style="font-size:24px;">🔍</div><span style="font-size:12px;font-weight:600;color:var(--text-main);">No matching entries</span></div>`;
+        updateLoggerSummary([]);
         return;
     }
 
-    const sorted = [...filteredTxns].reverse();
-    sorted.forEach(t => {
+    // Sort Ascending by Date (and by ID/Ref as tie-breaker for same-day stability)
+    const sorted = [...filteredTxns].sort((a, b) => {
+        const dateA = new Date(a.date || a.formState?.date).getTime();
+        const dateB = new Date(b.date || b.formState?.date).getTime();
+        if (dateA === dateB) {
+            return String(a.id || "").localeCompare(String(b.id || ""));
+        }
+        return dateA - dateB;
+    });
+    
+    currentFilteredTxns = sorted;
+    updateLoggerSummary(currentFilteredTxns);
+
+    currentFilteredTxns.forEach(t => {
         const isSelf = t.formState && t.formState.self_transfer;
         const color = isSelf ? 'var(--self-transfer)' : (t.flow === 'withdraw' ? 'var(--danger)' : 'var(--primary)');
         const formattedAmount = Number(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
         const wrapper = document.createElement('div');
         wrapper.className = 'daily-txn-container';
         wrapper.innerHTML = `
-          <div style="position: absolute; left: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;">
-            <span style="font-size: 18px;" title="Delete">🗑️</span>
-          </div>
-          <div style="position: absolute; right: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;">
-            <span style="font-size: 18px;" title="Edit">✏️</span>
-          </div>
-          <div class="daily-txn-content" title="Tap to view details">
+          <div style="position: absolute; left: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;"><span style="font-size: 18px;" title="Delete">🗑️</span></div>
+          <div style="position: absolute; right: 0; top: 0; bottom: 0; display: flex; width: 80px; z-index: 0; align-items: center; justify-content: center; background: transparent;"><span style="font-size: 18px;" title="Edit">✏️</span></div>
+          <div class="daily-txn-content ${selectedTxns.has(t.id) ? 'selected' : ''}" title="Tap to view details">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
               <div style="flex:1;min-width:0;">
                 <strong style="color:var(--text-main);">${t.narration}</strong><br>
                 <span style="color:var(--text-label);font-size:10px;">${t.details}</span>
               </div>
-              <div style="font-weight:700;color:${color};padding-left:8px;flex-shrink:0;">
-                ₹${formattedAmount}
-              </div>
+              <div style="font-weight:700;color:${color};padding-left:8px;flex-shrink:0;">₹${formattedAmount}</div>
             </div>
           </div>
         `;
@@ -2138,22 +2222,28 @@ function renderDailyTxnsModal() {
 
         const content = wrapper.querySelector('.daily-txn-content');
         let startX = 0, currentX = 0, isDragging = false, hasDragged = false;
-        
+        let pressTimer = null;
+
+        function cancelPress() { if(pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
         function onStart(x) { 
             startX = x; isDragging = true; hasDragged = false; currentX = 0; content.style.transition = 'none'; 
         }
         function onMove(x) { 
             if (!isDragging) return; 
             currentX = x - startX; 
-            if (Math.abs(currentX) > 5) hasDragged = true; 
+            if (Math.abs(currentX) > 5) { hasDragged = true; cancelPress(); } 
+            if (isSelectionMode) return; // Prevent swipe during selection mode
             if (currentX > 90) currentX = 90; 
             if (currentX < -90) currentX = -90; 
             content.style.transform = `translateX(${currentX}px)`; 
         }
         function onEnd() { 
+            cancelPress();
             if (!isDragging) return; 
             isDragging = false; 
             content.style.transition = 'transform 0.25s ease'; 
+            if (isSelectionMode) { content.style.transform = 'translateX(0)'; return; }
             if (currentX > 50) { 
                 content.style.transform = 'translateX(0)'; 
                 removeDailyTxn(t.id);
@@ -2163,29 +2253,114 @@ function renderDailyTxnsModal() {
             } else { 
                 content.style.transform = 'translateX(0)'; 
             } 
-            window.removeEventListener('mousemove', handleMouseMove); 
-            window.removeEventListener('mouseup', handleMouseUp); 
         }
 
-        content.addEventListener('touchstart', e => onStart(e.touches[0].clientX), {passive: true});
-        content.addEventListener('touchmove', e => onMove(e.touches[0].clientX), {passive: true});
-        content.addEventListener('touchend', onEnd);
+        // Prevent native context menu to allow custom long press
+        content.addEventListener('contextmenu', e => { if (isSelectionMode) e.preventDefault(); });
 
-        const handleMouseMove = e => { if (isDragging) onMove(e.clientX); };
-        const handleMouseUp = () => { if (isDragging) onEnd(); };
+        content.addEventListener('touchstart', e => {
+            if(e.touches && e.touches.length > 1) return;
+            pressTimer = setTimeout(() => {
+                if(!isSelectionMode) {
+                    isSelectionMode = true;
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    justLongPressed = true;
+                    toggleSelection(t.id, content);
+                    setTimeout(() => { justLongPressed = false; }, 300);
+                }
+            }, 500);
+            onStart(e.touches[0].clientX);
+        }, {passive: true});
+
+        content.addEventListener('touchmove', e => { onMove(e.touches[0].clientX); }, {passive: true});
+        content.addEventListener('touchend', e => { onEnd(); });
+
+        const handleMouseMove = e => { onMove(e.clientX); };
+        const handleMouseUp = () => { onEnd(); window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
 
         content.addEventListener('mousedown', e => { 
+            pressTimer = setTimeout(() => {
+                if(!isSelectionMode) {
+                    isSelectionMode = true;
+                    justLongPressed = true;
+                    toggleSelection(t.id, content);
+                    setTimeout(() => { justLongPressed = false; }, 300);
+                }
+            }, 500);
             onStart(e.clientX); 
             window.addEventListener('mousemove', handleMouseMove); 
             window.addEventListener('mouseup', handleMouseUp); 
         });
 
         content.addEventListener('click', e => { 
+            cancelPress();
             if (hasDragged) { e.preventDefault(); e.stopPropagation(); return; } 
+            if (justLongPressed) { e.preventDefault(); e.stopPropagation(); return; } 
+            
+            if (isSelectionMode) {
+                e.preventDefault(); e.stopPropagation();
+                toggleSelection(t.id, content);
+                return;
+            }
             viewDailyTxnDetails(t.id); 
         });
     });
 }
+
+// Helpers for dynamic selection mode
+function toggleSelection(id, element) {
+    if (selectedTxns.has(id)) {
+        selectedTxns.delete(id);
+        element.classList.remove('selected');
+    } else {
+        selectedTxns.add(id);
+        element.classList.add('selected');
+    }
+    
+    if (selectedTxns.size === 0) {
+        isSelectionMode = false;
+    }
+    updateLoggerSummary(currentFilteredTxns);
+}
+
+function updateLoggerSummary(list = currentFilteredTxns) {
+    let inAmt = 0, outAmt = 0;
+    
+    // If in selection mode and at least 1 item is selected, sum ONLY selected.
+    // Otherwise, sum the entire filtered list.
+    const targetList = (isSelectionMode && selectedTxns.size > 0) 
+        ? list.filter(t => selectedTxns.has(t.id)) 
+        : list;
+
+    targetList.forEach(t => {
+        if (t.formState && t.formState.self_transfer) return;
+        if (t.flow === 'deposit') inAmt += t.amount;
+        else if (t.flow === 'withdraw') outAmt += t.amount;
+    });
+
+    document.getElementById('logInVal').textContent = inAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('logOutVal').textContent = outAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    const net = inAmt - outAmt;
+    const netEl = document.getElementById('logNetVal');
+    netEl.textContent = (net >= 0 ? '+' : '-') + '₹' + Math.abs(net).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    netEl.style.color = net >= 0 ? 'var(--primary)' : 'var(--danger)';
+
+    const cancelBtn = document.getElementById('cancelSelectionBtn');
+    if (isSelectionMode && selectedTxns.size > 0) {
+        cancelBtn.classList.remove('hidden');
+        cancelBtn.textContent = `Clear (${selectedTxns.size})`;
+    } else {
+        cancelBtn.classList.add('hidden');
+    }
+}
+
+window.exitSelectionMode = function() {
+    isSelectionMode = false;
+    selectedTxns.clear();
+    document.querySelectorAll('.daily-txn-content.selected').forEach(el => el.classList.remove('selected'));
+    updateLoggerSummary(currentFilteredTxns);
+};
 
 // --- SEARCH INPUT EVENT LISTENERS ---
 document.getElementById('logSearchInput').addEventListener('input', function(e) {
@@ -2246,7 +2421,6 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             localStorage.setItem('dragDashBallTop', ball.offsetTop);
         } else {
             renderDailyTxnsModal();
-            document.getElementById('dailyLogTitle').textContent = `Logs for ${formatDisplayDate(document.getElementById('date').value)}`;
             document.getElementById('todayTxnModal').classList.remove('hidden');
         }
     };
@@ -3187,7 +3361,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
         handleBikeTaxiTripIncrement();
         updateRecurringNextDate();
         const currentDate = document.getElementById('date').value || getTodayIST();
-        await fetchLogsForDate(currentDate);
+        await fetchLogsForDateRange(currentDate, currentDate);
         window.currentSaveStats = null;
 
         if (multiTxnQueue.length > 0) {
@@ -3254,7 +3428,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
     btnStop.textContent = "🛑 Stop Sync";
     btnSync.classList.remove('hidden');
     const currentDate = document.getElementById('date').value || getTodayIST();
-    await fetchLogsForDate(currentDate);
+    await fetchLogsForDateRange(currentDate, currentDate);
 
     if (syncAborted) showToast("Sync stopped.");
     else showToast("✔ All data synced to Drive");
@@ -5313,7 +5487,7 @@ window.addEventListener('load', () => {
             autoRestoreDataOnLoad();
             renderUpcomingRecurring();
             setTimeout(checkRecurringTemplates, 500);
-            fetchLogsForDate(getTodayIST());
+            fetchLogsForDateRange(getTodayIST(), getTodayIST());
         };
     </script>
 </body>
