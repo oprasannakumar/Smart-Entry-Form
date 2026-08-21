@@ -843,7 +843,7 @@
 
     <!-- Borrower / Loan Finder Modal -->
     <div id="borrowerModal" class="modal hidden">
-            <div class="confirm-card" style="max-width:95%;width:340px;padding:20px;">
+            <div class="confirm-card" style="max-width:95%;width:380px;padding:20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
                     <h3 style="margin:0;font-size:16px;color:var(--secondary);">🤝 Loan Borrower Finder</h3>
                     <span style="cursor:pointer;font-size:18px;" onclick="closeBorrowerModal()">✕</span>
@@ -2041,7 +2041,7 @@ function handleBikeTaxiTripIncrement() {
                                 <strong style="color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.narration || 'Loan Entry'}</strong>
                                 <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
                             </div>
-                            <strong style="color:${amountColor}; white-space:nowrap; display:inline-flex; justify-content:flex-end; min-width:200px; flex-shrink:0;">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                            <strong style="color:${amountColor}; white-space:nowrap; display:inline-flex; justify-content:flex-end; width:200px; flex-shrink:0;">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
                         </div>
                     `;
                 }).join('');
