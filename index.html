@@ -1620,13 +1620,18 @@ function handleBikeTaxiTripIncrement() {
                 renderSessionDashboard();
             }
         });
- // --- Initialize Flatpickr for the Main Form Date ---
- let mainDatePicker = flatpickr("#date", {
+// --- Initialize Flatpickr for the Main Form Date ---
+        // Set the initial value directly on the input element first so it renders instantly
+        const initialDate = getTodayIST();
+        const dateInputNode = document.getElementById('date');
+        dateInputNode.value = initialDate;
+
+        let mainDatePicker = flatpickr("#date", {
             dateFormat: "Y-m-d",
             altInput: true,
             altFormat: "j-M-Y",
-            disableMobile: true, // Forces smooth custom calendar on mobile
-            defaultDate: getTodayIST(),
+            disableMobile: true,
+            defaultDate: initialDate,
             onChange: function(selectedDates, dateStr, instance) {
                 document.getElementById('date').dispatchEvent(new Event('change'));
             }
@@ -3795,7 +3800,13 @@ document.getElementById('spentForGroup').classList.remove('hidden');
     document.getElementById('paymentContainer').innerHTML = "";
     createPaymentRow();
 
-    document.getElementById('date').value = getTodayIST();
+    // Explicitly set date and force Flatpickr to sync
+    const todayStr = getTodayIST();
+    const dateField = document.getElementById('date');
+    dateField.value = todayStr;
+    if (dateField._flatpickr) {
+        dateField._flatpickr.setDate(todayStr, false);
+    }
 
     if (window.clearSplitPanel) window.clearSplitPanel();
 
@@ -5520,15 +5531,28 @@ window.addEventListener('load', () => {
     fetchInvoicesForSelectedDate();
 });
 
-        // --- ON LOAD ---
+// --- ON LOAD ---
         window.onload = () => {
-            document.getElementById('date').value = getTodayIST();
+            const todayStr = getTodayIST();
+            const dateField = document.getElementById('date');
+            dateField.value = todayStr;
+            if (dateField._flatpickr) {
+                dateField._flatpickr.setDate(todayStr, false);
+            }
+            
             fullReset();
+            
+            // Re-apply today's date just in case fullReset cleared it
+            dateField.value = todayStr;
+            if (dateField._flatpickr) {
+                dateField._flatpickr.setDate(todayStr, false);
+            }
+
             loadPurposeMemory();
             autoRestoreDataOnLoad();
             renderUpcomingRecurring();
             setTimeout(checkRecurringTemplates, 500);
-            fetchLogsForDateRange(getTodayIST(), getTodayIST());
+            fetchLogsForDateRange(todayStr, todayStr);
         };
     </script>
 </body>
