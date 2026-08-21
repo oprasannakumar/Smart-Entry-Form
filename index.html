@@ -5452,51 +5452,31 @@ function openBalanceModal() {
                 const savingsListEl = document.getElementById('modalSavingsList');
                 const creditListEl = document.getElementById('modalCreditList');
 
-                // Pill container style (flexbox with wrapping, tight gaps)
-                const pillFlexStyle = `display: flex; flex-wrap: wrap; gap: 6px; align-items: center;`;
+                // Apply CSS grid container styling dynamically
+                const gridStyle = `display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;`;
 
                 if (data.savings && data.savings.length > 0) {
-                    let totalSavings = 0;
-                    const savingsHtml = data.savings.map(s => {
-                        totalSavings += s.balance;
-                        return `
-                            <div style="background:var(--bg-input); padding:5px 10px; border-radius:16px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:4px; font-size:11px;">
-                                <span style="font-weight:300; color:var(--text-main);">${s.name}:</span>
-                                <strong style="color:var(--primary);">₹${s.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                            </div>
-                        `;
-                    }).join('');
-
-                    // Add a "Total" pill at the end for savings
-
-                    savingsListEl.innerHTML = `<div style="${pillFlexStyle}">${savingsHtml}</div>`;
+                    const savingsHtml = data.savings.map(s => `
+                        <div style="background:var(--bg-input); padding:7px 8px; border-radius:8px; border:1px solid var(--border-color); display:flex; flex-direction:column; justify-content:space-between;">
+                            <span style="font-weight:600; font-size:10px; color:var(--text-label); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</span>
+                            <strong style="color:var(--primary); font-size:12px; margin-top:2px;">₹${s.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                    `).join('');
+                    savingsListEl.innerHTML = `<div style="${gridStyle}">${savingsHtml}</div>`;
                 } else {
-                    savingsListEl.innerHTML = `<span style="color:var(--text-label); font-size:8px;">No savings data found</span>`;
+                    savingsListEl.innerHTML = `<span style="color:var(--text-label); font-size:11px;">No savings data found</span>`;
                 }
 
                 if (data.credit && data.credit.length > 0) {
-                    let totalCredit = 0;
-                    const creditHtml = data.credit.map(c => {
-                        totalCredit += c.balance;
-                        return `
-                            <div style="background:var(--bg-input); padding:5px 10px; border-radius:16px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:4px; font-size:11px;">
-                                <span style="font-weight:300; color:var(--text-main);">${c.name}:</span>
-                                <strong style="color:var(--danger);">₹${c.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                            </div>
-                        `;
-                    }).join('');
-
-                    // Add a "Total" pill at the end for credit cards
-                    const totalCreditPill = `
-                        <div style="background:var(--bg-input); padding:5px 10px; border-radius:16px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:4px; font-size:11px;">
-                            <span style="font-weight:700; color:var(--text-main);">Total:</span>
-                            <strong style="color:var(--danger);">₹${totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                    const creditHtml = data.credit.map(c => `
+                        <div style="background:var(--bg-input); padding:7px 8px; border-radius:8px; border:1px solid var(--border-color); display:flex; flex-direction:column; justify-content:space-between;">
+                            <span style="font-weight:600; font-size:10px; color:var(--text-label); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</span>
+                            <strong style="color:var(--danger); font-size:12px; margin-top:2px;">₹${c.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
                         </div>
-                    `;
-
-                    creditListEl.innerHTML = `<div style="${pillFlexStyle}">${creditHtml}${totalCreditPill}</div>`;
+                    `).join('');
+                    creditListEl.innerHTML = `<div style="${gridStyle}">${creditHtml}</div>`;
                 } else {
-                    creditListEl.innerHTML = `<span style="color:var(--text-label); font-size:8px;">No credit card data found</span>`;
+                    creditListEl.innerHTML = `<span style="color:var(--text-label); font-size:11px;">No credit card data found</span>`;
                 }
 
             } catch (err) {
