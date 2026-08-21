@@ -5453,7 +5453,7 @@ function openBalanceModal() {
                 const creditListEl = document.getElementById('modalCreditList');
 
                 // Apply CSS grid container styling dynamically
-                const gridStyle = `display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;`;
+                const gridStyle = `display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 6px;`;
 
                 if (data.savings && data.savings.length > 0) {
                     const savingsHtml = data.savings.map(s => `
