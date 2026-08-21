@@ -777,6 +777,7 @@
                             <button type="button" id="fabToggle" title="Navigation">🔗</button>
                             <div class="nav-options">
                                 <a href="#" class="nav-item" onclick="openBalanceModal(); return false;">💰 Account Balances</a>
+                                <a href="#" class="nav-item" onclick="openBorrowerModal(); return false;">🤝 Loan Borrower Finder</a>
                                 <a href="#" class="nav-item" onclick="openRecurringManager(); return false;">⏳ Recurring</a>
                                 <a href="#" class="nav-item" onclick="openTemplateManager(); return false;">📋 Custom Templates</a>
                             </div>
@@ -807,8 +808,9 @@
             </select>
             <input type="number" id="customDays" placeholder="Days" class="hidden" min="1" style="margin-top:6px;">
         </div>
-<!-- Account Balances Modal -->
-<div id="balanceModal" class="modal hidden">
+
+    <!-- Account Balances Modal -->
+    <div id="balanceModal" class="modal hidden">
         <div class="confirm-card" style="max-width:95%;width:340px;padding:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
                 <h3 style="margin:0;font-size:16px;color:var(--secondary);">💰 Accounts & Credit Overview</h3>
@@ -838,9 +840,56 @@
                 <input type="text" id="reference" placeholder="">
             </div>
         </div>
-<!-- BIKE TAXI TRIP COUNTER TOOLBAR -->
-<div id="biketaxiTripToolbar" class="hidden" style="margin-bottom: 8px; background: rgba(234,179,8,0.1); border: 1px solid #eab308; border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between;">
-    <div style="display:flex; align-items:center; gap:6px;">
+
+    <!-- Borrower / Loan Finder Modal -->
+    <div id="borrowerModal" class="modal hidden">
+            <div class="confirm-card" style="max-width:95%;width:340px;padding:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+                    <h3 style="margin:0;font-size:16px;color:var(--secondary);">🤝 Loan Borrower Finder</h3>
+                    <span style="cursor:pointer;font-size:18px;" onclick="closeBorrowerModal()">✕</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;max-height:75vh;overflow-y:auto;padding-right:4px;">
+                    <div>
+                        <label style="margin-top:0;">Select Borrower</label>
+                        <select id="borrowerSelect" onchange="renderSelectedBorrowerDetails()" style="width:100%; height:38px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-main); font-size:13px; padding:0 10px;">
+                            <option value="">-- Choose Borrower --</option>
+                        </select>
+                    </div>
+    
+                    <!-- NEW: Dedicated Flatpickr Date Range Picker for Borrower Modal -->
+                    <div>
+                        <label style="margin-top:0;">Filter by Date Range</label>
+                        <input type="text" id="borrowerDatePicker" placeholder="Select Date or Range" style="width:100%; height:38px; padding:0 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-main); font-size:13px; font-weight:600; text-align:center;">
+                    </div>
+    
+                    <div id="borrowerDetailsCard" class="hidden" style="background:var(--bg-input); border:1px solid var(--border-color); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; justify-content:space-between; font-size:12px;">
+                            <span style="color:var(--text-label); font-weight:600;">Amount Given:</span>
+                            <strong id="borrowerGivenVal" style="color:var(--danger);">₹0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px;">
+                            <span style="color:var(--text-label); font-weight:600;">Amount Received:</span>
+                            <strong id="borrowerReceivedVal" style="color:var(--primary);">₹0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:13px; border-top:1px dashed var(--border-color); padding-top:6px; margin-top:2px;">
+                            <span style="color:var(--text-main); font-weight:700;">Net Balance:</span>
+                            <strong id="borrowerDiffVal" style="color:var(--secondary);">₹0.00</strong>
+                        </div>
+                    </div>
+    
+                    <!-- Transaction History Container -->
+                    <div id="borrowerTxnContainer" class="hidden" style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+                        <strong style="font-size:12px; color:var(--text-label);">Transactions in Selected Date Range:</strong>
+                        <div id="borrowerTxnList" style="display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BIKE TAXI TRIP COUNTER TOOLBAR -->
+
+        <div id="biketaxiTripToolbar" class="hidden" style="margin-bottom: 8px; background: rgba(234,179,8,0.1); border: 1px solid #eab308; border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display:flex; align-items:center; gap:6px;">
         <span style="font-size:12px; font-weight:700; color:#eab308;">🏍️ Trip:</span>
         <strong id="biketaxiTripBadge" style="font-size:13px; color:var(--text-main);">#1</strong>
     </div>
@@ -5403,8 +5452,8 @@ async function autoRestoreDataOnLoad() {
             console.log("Custom templates auto-restore skipped:", err);
         }
     }
-}
-document.getElementById('invoice_no').addEventListener('blur', async function() {
+    }
+    document.getElementById('invoice_no').addEventListener('blur', async function() {
     const invoiceNo = this.value.trim();
     if (!invoiceNo) return;
 
@@ -5429,19 +5478,19 @@ document.getElementById('invoice_no').addEventListener('blur', async function() 
     }
 });
 
-function openBalanceModal() {
-            // Close the navigation menu dropdown if it's open
-            document.getElementById('navFab').classList.remove('active');
-            document.getElementById('balanceModal').classList.remove('hidden');
-        }
+        function openBalanceModal() {
+                    // Close the navigation menu dropdown if it's open
+                    document.getElementById('navFab').classList.remove('active');
+                    document.getElementById('balanceModal').classList.remove('hidden');
+                }
 
-        function closeBalanceModal() {
-            document.getElementById('balanceModal').classList.add('hidden');
-        }
+                function closeBalanceModal() {
+                    document.getElementById('balanceModal').classList.add('hidden');
+                }
 
-        // Close modal on background click
-        document.getElementById('balanceModal').addEventListener('click', function(e) {
-            if (e.target === this) closeBalanceModal();
+                // Close modal on background click
+                document.getElementById('balanceModal').addEventListener('click', function(e) {
+                    if (e.target === this) closeBalanceModal();
         });
 
         async function fetchAccountBalances() {
@@ -5498,6 +5547,7 @@ async function fetchInvoicesForSelectedDate() {
         cachedInvoicesForDate = [];
     }
 }
+
 
 // Bind to date change event
 document.getElementById('date').addEventListener('change', fetchInvoicesForSelectedDate);
@@ -5592,14 +5642,117 @@ function showInvoiceSuggestions(filterText) {
     });
 }
 
+        let globalBorrowersData = [];
+        let globalLoanTxns = [];
+        let borrowerDatePickerInstance = null;
 
-// Close suggestions on outside click
-document.addEventListener('click', function(e) {
-    if (e.target !== invoiceInp) {
-        invoiceSuggestBox.classList.add('hidden');
-    }
-});
+        async function openBorrowerModal() {
+            document.getElementById('navFab').classList.remove('active');
+            document.getElementById('borrowerModal').classList.remove('hidden');
+            
+            document.getElementById('borrowerSelect').innerHTML = '<option value="">Loading borrowers...</option>';
+            document.getElementById('borrowerDetailsCard').classList.add('hidden');
+            document.getElementById('borrowerTxnContainer').classList.add('hidden');
 
+            // Initialize Flatpickr for the borrower modal if not already initialized
+            if (!borrowerDatePickerInstance) {
+                borrowerDatePickerInstance = flatpickr("#borrowerDatePicker", {
+                    mode: "range",
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "j-M-Y",
+                    disableMobile: true,
+                    defaultDate: getTodayIST(),
+                    onChange: function(selectedDates, dateStr, instance) {
+                        renderSelectedBorrowerDetails();
+                    }
+                });
+            }
+
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getBorrowersSummary`);
+                const data = await res.json();
+                
+                globalBorrowersData = data.borrowers || [];
+                globalLoanTxns = data.loanTransactions || [];
+                const selectEl = document.getElementById('borrowerSelect');
+                
+                if (globalBorrowersData.length > 0) {
+                    selectEl.innerHTML = '<option value="">-- Choose Borrower --</option>' + 
+                        globalBorrowersData.map((b, idx) => `<option value="${idx}">${b.name}</option>`).join('');
+                } else {
+                    selectEl.innerHTML = '<option value="">No borrowers found</option>';
+                }
+            } catch (err) {
+                console.error("Failed to load borrowers:", err);
+                document.getElementById('borrowerSelect').innerHTML = '<option value="">Failed to load data</option>';
+            }
+        }
+
+        function closeBorrowerModal() {
+            document.getElementById('borrowerModal').classList.add('hidden');
+        }
+
+        document.getElementById('borrowerModal').addEventListener('click', function(e) {
+            if (e.target === this) closeBorrowerModal();
+        });
+
+        function renderSelectedBorrowerDetails() {
+            const idx = document.getElementById('borrowerSelect').value;
+            const detailsCard = document.getElementById('borrowerDetailsCard');
+            const txnContainer = document.getElementById('borrowerTxnContainer');
+            const txnListEl = document.getElementById('borrowerTxnList');
+
+            if (idx === "") {
+                detailsCard.classList.add('hidden');
+                txnContainer.classList.add('hidden');
+                return;
+            }
+
+            const borrower = globalBorrowersData[idx];
+            if (!borrower) return;
+
+            // Render Totals
+            document.getElementById('borrowerGivenVal').textContent = `₹${borrower.given.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('borrowerReceivedVal').textContent = `₹${borrower.received.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            
+            const diffEl = document.getElementById('borrowerDiffVal');
+            diffEl.textContent = `₹${Math.abs(borrower.difference).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            diffEl.style.color = borrower.difference >= 0 ? 'var(--primary)' : 'var(--danger)';
+            detailsCard.classList.remove('hidden');
+
+            // Extract Date Range from the modal's own Flatpickr instance
+            let startDate = "", endDate = "";
+            if (borrowerDatePickerInstance && borrowerDatePickerInstance.selectedDates.length > 0) {
+                startDate = borrowerDatePickerInstance.formatDate(borrowerDatePickerInstance.selectedDates[0], "Y-m-d");
+                endDate = borrowerDatePickerInstance.selectedDates.length > 1 
+                    ? borrowerDatePickerInstance.formatDate(borrowerDatePickerInstance.selectedDates[1], "Y-m-d") 
+                    : startDate;
+            }
+
+            const filteredTxns = globalLoanTxns.filter(t => {
+                const matchesBorrower = t.borrower.toLowerCase().includes(borrower.name.toLowerCase()) || 
+                                       t.narration.toLowerCase().includes(borrower.name.toLowerCase());
+                const matchesDate = (!startDate || (t.date >= startDate && t.date <= endDate));
+                return matchesBorrower && matchesDate;
+            });
+
+            if (filteredTxns.length > 0) {
+                txnListEl.innerHTML = filteredTxns.map(t => `
+                    <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+                        <div>
+                            <strong style="color:var(--text-main); display:block;">${t.narration}</strong>
+                            <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
+                        </div>
+                        <strong style="color:var(--secondary);">₹${t.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                    </div>
+                `).join('');
+                txnContainer.classList.remove('hidden');
+            } else {
+                txnListEl.innerHTML = `<span style="color:var(--text-label); font-size:11px;">No transactions found for this date range.</span>`;
+                txnContainer.classList.remove('hidden');
+            }
+        }
 // Initial pre-fetch on page load
 window.addEventListener('load', () => {
     fetchInvoicesForSelectedDate();
