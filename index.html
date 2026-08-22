@@ -2100,6 +2100,7 @@ function handleBikeTaxiTripIncrement() {
             setTimeout(() => {
                 const currentDate = document.getElementById('date').value || getTodayIST();
                 fetchLogsForDateRange(currentDate, currentDate);
+              fetchAccountBalances();
             }, 500);
         } catch (e) { 
             showToast("Failed to connect to backend", "var(--danger)"); 
@@ -3519,7 +3520,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                     if (typeof fetchLogsForDateRange === 'function') {
                         fetchLogsForDateRange(currentDate, currentDate).catch(e => console.error("Background Log Fetch Error:", e));
                     }
-                    
+                    fetchAccountBalances();
                 } catch (uiErr) {
                     console.error("UI update after save failed:", uiErr);
                 }
@@ -3572,7 +3573,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
     btnSync.classList.remove('hidden');
     const currentDate = document.getElementById('date').value || getTodayIST();
     await fetchLogsForDateRange(currentDate, currentDate);
-
+fetchAccountBalances();
     if (syncAborted) showToast("Sync stopped.");
     else showToast("✔ All data synced to Drive");
 }
@@ -3877,10 +3878,15 @@ setMode = function(mode, state) {
     setRefPlaceholder();
     bikeTaxiMode = false;
     if (typeof updateTripCounterUI === 'function') updateTripCounterUI();
-              const diffContainer = document.getElementById('splitDiffContainer');
-    if (diffContainer) {
-        diffContainer.classList.add('hidden');
-    }
+                      const diffContainer = document.getElementById('splitDiffContainer');
+        const diffLabel = document.getElementById('splitDiffLabel'); // Add this line
+        if (diffContainer) {
+            diffContainer.classList.add('hidden');
+        }
+        if (diffLabel) {
+            diffLabel.classList.add('hidden'); // Add this line
+        }
+
 
     if (!keepModes) {
         batchMode = false;
@@ -5536,6 +5542,7 @@ async function autoRestoreDataOnLoad() {
                     // Close the navigation menu dropdown if it's open
                     document.getElementById('navFab').classList.remove('active');
                     document.getElementById('balanceModal').classList.remove('hidden');
+          fetchAccountBalances();
                 }
 
                 function closeBalanceModal() {
