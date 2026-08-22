@@ -1516,10 +1516,35 @@ document.querySelectorAll('#mathKeyboard .kb-key').forEach(btn => {
         ];
         const rewardPlatforms = ["Amazon", "Flipkart", "Supermoney", "Payzapp", "MobiKwik", "Tata Neu"];
         const denoms = [500, 200, 100, 50, 20, 10, 5, 2, 1];
-        const DB_NAME = "TransactionManagerDB_v4",
+       const DB_NAME = "TransactionManagerDB_v4",
             STORE_NAME = "txn_queue";
         let db = null;
         let isLoadingLogs = false;
+        // FIX: Add the missing dashboard rendering function to stop UI crashes
+        window.renderSessionDashboard = function() {
+            try {
+                const data = JSON.parse(localStorage.getItem('daily_txns') || '{"txns":[]}');
+                let income = 0, spent = 0;
+                
+                (data.txns || []).forEach(t => {
+                    // Skip self-transfers so they don't bloat income/expense totals
+                    if (t.formState && t.formState.self_transfer) return;
+                    
+                    const amt = parseFloat(t.amount) || 0;
+                    if (t.flow === 'deposit') income += amt;
+                    else if (t.flow === 'withdraw') spent += amt;
+                });
+
+                const incEl = document.getElementById('ballIncomeVal');
+                const spentEl = document.getElementById('ballSpentVal');
+                
+                if (incEl) incEl.textContent = `+₹${income.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                if (spentEl) spentEl.textContent = `-₹${spent.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            } catch (e) {
+                console.warn("Dashboard render safely skipped", e);
+            }
+        };
+
 
         const navFab = document.getElementById('navFab');
         const fabBtn = document.getElementById('fabToggle');
