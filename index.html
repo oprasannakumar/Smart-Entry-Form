@@ -2045,30 +2045,35 @@ function handleBikeTaxiTripIncrement() {
                     : startDate;
             }
 
-            const filteredTxns = globalLoanTxns.filter(t => {
-                const matchesBorrower = t.borrower.toLowerCase().includes(borrower.name.toLowerCase()) || 
-                                       t.narration.toLowerCase().includes(borrower.name.toLowerCase());
-                const matchesDate = (!startDate || (t.date >= startDate && t.date <= endDate));
-                return matchesBorrower && matchesDate;
-            });
+const filteredTxns = globalLoanTxns.filter(t => {
+    // Normalize both strings to prevent mismatch due to trailing spaces or casing
+    const txnBorrower = (t.borrower || "").trim().toLowerCase();
+    const selectedName = borrower.name.trim().toLowerCase();
+
+    const matchesBorrower = txnBorrower === selectedName;
+    const matchesDate = (!startDate || (t.date >= startDate && t.date <= endDate));
+    
+    return matchesBorrower && matchesDate;
+});
+
 
             if (filteredTxns.length > 0) {
                 txnListEl.innerHTML = filteredTxns.map(t => {
                     // Determine if it's a Given or Received transaction
                     const isGiven = t.given > 0;
-                    const amountVal = isGiven ? t.given : t.received;
-                    const amountColor = isGiven ? 'var(--danger)' : 'var(--primary)';
-                    const prefix = isGiven ? '-₹' : '+₹';
+const amountVal = isGiven ? t.given : t.received;
+const amountColor = isGiven ? 'var(--danger)' : 'var(--primary)';
 
-                    return `
-                        <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
-                            <div style="min-width:0; flex:1; padding-right:4px;">
-                                <strong style="color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.narration || 'Loan Entry'}</strong>
-                                <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
-                            </div>
-                            <strong style="color:${amountColor}; white-space:nowrap; display:inline-flex; justify-content:flex-end; width:200px; flex-shrink:0;">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                        </div>
-                    `;
+return `
+    <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
+        <div style="min-width:0; flex:1; padding-right:4px;">
+            <strong style="color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.narration || 'Loan Entry'}</strong>
+            <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
+        </div>
+        <strong style="color:${amountColor}; white-space:nowrap; display:inline-flex; justify-content:flex-end; width:200px; flex-shrink:0;">₹${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+    </div>
+`;
+
                 }).join('');
                 txnContainer.classList.remove('hidden');
             } else {
@@ -2095,7 +2100,7 @@ function handleBikeTaxiTripIncrement() {
         try {
             await fetch(`${DELETE_URL}?action=delete&value=${encodeURIComponent(txn.ref)}`, { method: "GET", mode: "no-cors" });
             showToast("🗑️ Delete command sent");
-            
+            fetchBorrowerData();
             // Re-fetch backend logs after 500ms
             setTimeout(() => {
                 const currentDate = document.getElementById('date').value || getTodayIST();
@@ -3486,14 +3491,18 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 showToast("📦 Saved offline", "#3b82f6");
             }
 
-            // 2. ISOLATED UI UPDATE BLOCK
+             // 2. ISOLATED UI UPDATE BLOCK
             if (isNetworkSuccess) {
                 try {
                     showToast("✔ Transaction Saved");
                     
+                    // Fetch fresh borrower data if it was a split/loan transaction
+                    if (window.currentSaveStats && window.currentSaveStats.formState && window.currentSaveStats.formState.split_enabled) {
+                        fetchBorrowerData();                   
+                    }
+                    
                     // ==========================================
                     // CLEAR THE FORM FIRST!
-                    // Guaranteeing the reset happens before background fetches can crash
                     // ==========================================
                     window.currentSaveStats = null;
                     if (typeof multiTxnQueue !== 'undefined' && multiTxnQueue.length > 0) {
@@ -3509,13 +3518,9 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                         fullReset(batchMode);
                     }
 
-                    // ==========================================
-                    // RUN BACKGROUND TASKS LAST
-                    // ==========================================
                     if (typeof handleBikeTaxiTripIncrement === 'function') handleBikeTaxiTripIncrement();
                     if (typeof updateRecurringNextDate === 'function') updateRecurringNextDate();
                     
-                    // Fetch latest logs (Running completely detached so errors here don't break the UI)
                     const currentDate = document.getElementById('date').value || getTodayIST();
                     if (typeof fetchLogsForDateRange === 'function') {
                         fetchLogsForDateRange(currentDate, currentDate).catch(e => console.error("Background Log Fetch Error:", e));
@@ -3525,6 +3530,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                     console.error("UI update after save failed:", uiErr);
                 }
             }
+
             
             btn.disabled = false; 
             btn.textContent = originalText; 
@@ -5706,14 +5712,20 @@ function showInvoiceSuggestions(filterText) {
         let globalBorrowersData = [];
         let globalLoanTxns = [];
         let borrowerDatePickerInstance = null;
+        (function initCachedBorrowers() {
+    const cached = localStorage.getItem('cachedBorrowersData');
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            globalBorrowersData = parsed.borrowers || [];
+            globalLoanTxns = parsed.txns || [];
+        } catch(e) {}
+    }
+})();
 
         async function openBorrowerModal() {
             document.getElementById('navFab').classList.remove('active');
             document.getElementById('borrowerModal').classList.remove('hidden');
-            
-            document.getElementById('borrowerSelect').innerHTML = '<option value="">Loading borrowers...</option>';
-            document.getElementById('borrowerDetailsCard').classList.add('hidden');
-            document.getElementById('borrowerTxnContainer').classList.add('hidden');
 
             // Initialize Flatpickr for the borrower modal if not already initialized
             if (!borrowerDatePickerInstance) {
@@ -5730,23 +5742,28 @@ function showInvoiceSuggestions(filterText) {
                 });
             }
 
+            // Use cached data instantly without refetching from network
+            renderBorrowerDropdown();
+        }
+
+        function renderBorrowerDropdown() {
+            const selectEl = document.getElementById('borrowerSelect');
+            if (globalBorrowersData.length > 0) {
+                selectEl.innerHTML = '<option value="">-- Choose Borrower --</option>' + 
+                    globalBorrowersData.map((b, idx) => `<option value="${idx}">${b.name}</option>`).join('');
+            } else {
+                selectEl.innerHTML = '<option value="">No borrowers found</option>';
+            }
+        }
+        async function fetchBorrowerData() {
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getBorrowersSummary`);
                 const data = await res.json();
-                
                 globalBorrowersData = data.borrowers || [];
                 globalLoanTxns = data.loanTransactions || [];
-                const selectEl = document.getElementById('borrowerSelect');
-                
-                if (globalBorrowersData.length > 0) {
-                    selectEl.innerHTML = '<option value="">-- Choose Borrower --</option>' + 
-                        globalBorrowersData.map((b, idx) => `<option value="${idx}">${b.name}</option>`).join('');
-                } else {
-                    selectEl.innerHTML = '<option value="">No borrowers found</option>';
-                }
+                localStorage.setItem('cachedBorrowersData', JSON.stringify({ borrowers: globalBorrowersData, txns: globalLoanTxns }));
             } catch (err) {
-                console.error("Failed to load borrowers:", err);
-                document.getElementById('borrowerSelect').innerHTML = '<option value="">Failed to load data</option>';
+                console.error("Failed to fetch borrower data:", err);
             }
         }
 
@@ -5758,69 +5775,7 @@ function showInvoiceSuggestions(filterText) {
             if (e.target === this) closeBorrowerModal();
         });
 
-        function renderSelectedBorrowerDetails() {
-            const idx = document.getElementById('borrowerSelect').value;
-            const detailsCard = document.getElementById('borrowerDetailsCard');
-            const txnContainer = document.getElementById('borrowerTxnContainer');
-            const txnListEl = document.getElementById('borrowerTxnList');
 
-            if (idx === "") {
-                detailsCard.classList.add('hidden');
-                txnContainer.classList.add('hidden');
-                return;
-            }
-
-            const borrower = globalBorrowersData[idx];
-            if (!borrower) return;
-
-            // Render Totals
-            document.getElementById('borrowerGivenVal').textContent = `₹${borrower.given.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('borrowerReceivedVal').textContent = `₹${borrower.received.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            
-            const diffEl = document.getElementById('borrowerDiffVal');
-            diffEl.textContent = `₹${Math.abs(borrower.difference).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            diffEl.style.color = borrower.difference >= 0 ? 'var(--primary)' : 'var(--danger)';
-            detailsCard.classList.remove('hidden');
-
-            // Extract Date Range from the modal's own Flatpickr instance
-            let startDate = "", endDate = "";
-            if (borrowerDatePickerInstance && borrowerDatePickerInstance.selectedDates.length > 0) {
-                startDate = borrowerDatePickerInstance.formatDate(borrowerDatePickerInstance.selectedDates[0], "Y-m-d");
-                endDate = borrowerDatePickerInstance.selectedDates.length > 1 
-                    ? borrowerDatePickerInstance.formatDate(borrowerDatePickerInstance.selectedDates[1], "Y-m-d") 
-                    : startDate;
-            }
-
-            const filteredTxns = globalLoanTxns.filter(t => {
-                const matchesBorrower = t.borrower.toLowerCase().includes(borrower.name.toLowerCase()) || 
-                                       t.narration.toLowerCase().includes(borrower.name.toLowerCase());
-                const matchesDate = (!startDate || (t.date >= startDate && t.date <= endDate));
-                return matchesBorrower && matchesDate;
-            });
-
-            if (filteredTxns.length > 0) {
-                txnListEl.innerHTML = filteredTxns.map(t => {
-                    const isGiven = t.given > 0;
-                    const amountVal = isGiven ? t.given : t.received;
-                    const amountColor = isGiven ? 'var(--danger)' : 'var(--primary)';
-                    const prefix = isGiven ? '-₹' : '+₹';
-
-                    return `
-                        <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-                            <div>
-                                <strong style="color:var(--text-main); display:block;">${t.narration || 'Loan Entry'}</strong>
-                                <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
-                            </div>
-                            <strong style="color:${amountColor};">${prefix}${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                        </div>
-                    `;
-                }).join('');
-                txnContainer.classList.remove('hidden');
-            } else {
-                txnListEl.innerHTML = `<span style="color:var(--text-label); font-size:11px;">No transactions found for this date range.</span>`;
-                txnContainer.classList.remove('hidden');
-            }
-        }
 // Initial pre-fetch on page load
 window.addEventListener('load', () => {
     fetchInvoicesForSelectedDate();
@@ -5848,7 +5803,7 @@ window.addEventListener('load', () => {
             renderUpcomingRecurring();
             fetchAccountBalances();
             setTimeout(checkRecurringTemplates, 500);
-            fetchLogsForDateRange(todayStr, todayStr);
+            fetchLogsForDateRange(todayStr, todayStr);fetchBorrowerData();
         };
     </script>
 </body>
