@@ -3199,34 +3199,39 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             const isBatch = batchMode;
             const isRecurring = recurringMode;
 
-            const narrationVal = document.getElementById('narration').value.trim();
-            let refVal = document.getElementById('reference').value.trim() || document.getElementById('reference').placeholder;
+            // USE VERIFIED STATE, NEVER THE DOM
+            const formState = overrideFormState || buildFormState();
+            
+            const narrationVal = formState.narration || '';
+            let refVal = formState.reference || document.getElementById('reference').placeholder;
             if (overrideRef) refVal = overrideRef;
 
-            const formState = overrideFormState || buildFormState();
             window.currentPayloads = [];
             const repeatData = [];
 
-            if (selfTransferMode) {
+            // ==========================================
+            // SELF TRANSFER BRANCH
+            // ==========================================
+            if (formState.self_transfer) {
                 let totalOut = 0;
-                document.querySelectorAll('#stSourcesContainer .row-amt').forEach(i => totalOut += window.evalMath(i.value) || 0);
+                (formState.sources || []).forEach(i => totalOut += Number(i.amount) || 0);
 
                 const payloadsToSubmit = [];
                
                 const appendLegs = (legs, typeLabel) => {
-                    legs.forEach(leg => {
+                    (legs || []).forEach(leg => {
                         const p = new URLSearchParams({
                             action: 'selfTransfer',
-                            date: formState.date,
+                            date: formState.date || getTodayIST(),
                             narration: `${narrationVal} (${typeLabel})`,
-                            amount: leg.amount,
+                            amount: leg.amount || 0,
                             reference: refVal,
-                            trtype: leg.type,
-                            from_to: leg.account,
+                            trtype: leg.type || 'Transfer',
+                            from_to: leg.account || 'Unknown',
                             flow: typeLabel === 'From' ? 'withdraw' : 'deposit',
                             category: 'self transfer'
                         });
-                        if (leg.type === 'Cash' && leg.denominations) {
+                        if (leg.type && leg.type.toLowerCase() === 'cash' && leg.denominations) {
                             Object.entries(leg.denominations).forEach(([val, count]) => {
                                 p.append('d' + val, count || 0);
                             });
@@ -3246,28 +3251,12 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                     <div class="confirm-item"><span class="confirm-label">Narration</span><span class="confirm-val">${narrationVal}</span></div>
                     <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${refVal}</span></div>
                     <div class="confirm-section-title">FROM (SOURCES)</div>`;
-                formState.sources.forEach(s => {
+                (formState.sources || []).forEach(s => {
                     detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${s.account} (${s.type})</span><span class="confirm-val">₹${Number(s.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
-                    if (s.denominations && s.type === 'Cash') {
-                        detailsHtml += `<div class="confirm-matrix-grid">`;
-                        denoms.forEach(v => {
-                            const val = s.denominations[v] || 0;
-                            detailsHtml += `<div class="confirm-matrix-card"><span>₹${v}</span><strong>${val}</strong></div>`;
-                        });
-                        detailsHtml += `</div>`;
-                    }
                 });
                 detailsHtml += `<div class="confirm-section-title">TO (DESTINATIONS)</div>`;
-                formState.destinations.forEach(d => {
+                (formState.destinations || []).forEach(d => {
                     detailsHtml += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${d.account} (${d.type})</span><span class="confirm-val">₹${Number(d.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
-                    if (d.denominations && d.type === 'Cash') {
-                        detailsHtml += `<div class="confirm-matrix-grid">`;
-                        denoms.forEach(v => {
-                            const val = d.denominations[v] || 0;
-                            detailsHtml += `<div class="confirm-matrix-card"><span>₹${v}</span><strong>${val}</strong></div>`;
-                        });
-                        detailsHtml += `</div>`;
-                    }
                 });
                 detailsHtml += `<div class="confirm-item" style="border:none;margin-top:10px;"><span class="confirm-label" style="color:var(--self-transfer)">Transfer Total</span><span class="confirm-val" style="color:var(--self-transfer);font-weight:bold">₹${Number(totalOut || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
 
@@ -3277,7 +3266,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                     amount: totalOut,
                     flow: 'withdraw',
                     narration: `${narrationVal}`,
-                    details: `${formState.sources.map(s=>s.account).join(', ')} ➔ ${formState.destinations.map(d=>d.account).join(', ')}`,
+                    details: `${(formState.sources || []).map(s=>s.account).join(', ')} ➔ ${(formState.destinations || []).map(d=>d.account).join(', ')}`,
                     ref: refVal,
                     fullHtml: detailsHtml,
                     formState: formState
@@ -3296,18 +3285,17 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 return;
             }
 
-            const pFinal = document.getElementById('purpose').value === 'Other' ? document.getElementById('purpose_other').value : document.getElementById('purpose').value;
-            const sFinal = document.getElementById('spent_for').value === 'Other' ? document.getElementById('spent_for_other').value : document.getElementById('spent_for').value;
-            const invoiceVal = document.getElementById('invoice_no').value || "";
-            const currentFlow = document.getElementById('flow').value;
-            const gTotalStr = document.getElementById('grandTotal').textContent;
-            const gTotalVal = parseFloat(gTotalStr.replace('₹', ''));
-
-            let paymentDetailsArray = [];
-            document.querySelectorAll('#paymentContainer .row-acc').forEach(s => {
-                let v = s.value === 'Other' ? s.closest('.payment-row-wrapper').querySelector('.row-acc-other').value : s.value;
-                if (v) paymentDetailsArray.push(v);
-            });
+            // ==========================================
+            // STANDARD / SPLIT BRANCH
+            // ==========================================
+            const pFinal = formState.purpose || '';
+            const sFinal = formState.spent_for || '';
+            const invoiceVal = formState.invoice_no || '';
+            const currentFlow = formState.flow || 'withdraw';
+            
+            const gTotalVal = (formState.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const gTotalStr = `₹${gTotalVal.toFixed(2)}`;
+            let paymentDetailsArray = (formState.payments || []).map(p => p.account);
 
             window.currentSaveStats = {
                 amount: gTotalVal,
@@ -3319,16 +3307,15 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 formState: formState
             };
 
-            const splitData = window.getSplitData ? window.getSplitData() : null;
-
-            if (splitData && splitMode) {
-                const splitTotal = splitData.personal + splitData.recipients.reduce((s, r) => s + r.amount, 0);
+            // SPLIT SPECIFIC
+            if (formState.split_enabled) {
+                const splitTotal = Number(formState.personal_share || 0) + (formState.recipients || []).reduce((s, r) => s + (Number(r.amount) || 0), 0);
                 if (Math.abs(splitTotal - gTotalVal) > 0.005) {
                     showToast("Split amounts do not match total amount", "var(--danger)");
                     return;
                 }
                 const payload = new URLSearchParams();
-                payload.append('date', document.getElementById('date').value);
+                payload.append('date', formState.date || getTodayIST());
                 payload.append('narration', narrationVal);
                 payload.append('invoice_no', invoiceVal);
                 payload.append('reference', refVal);
@@ -3336,16 +3323,16 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 payload.append('spent_for', sFinal);
                 payload.append('flow', currentFlow);
                 payload.append('split_enabled', '1');
-                payload.append('personal_share', splitData.personal);
-                payload.append('recipients', JSON.stringify(splitData.recipients));
-                payload.append('payments', JSON.stringify(formState.payments));
+                payload.append('personal_share', formState.personal_share || 0);
+                payload.append('recipients', JSON.stringify(formState.recipients || []));
+                payload.append('payments', JSON.stringify(formState.payments || []));
 
                 window.currentPayloads = [payload.toString()];
                 repeatData.push(payload.toString());
 
                 function buildSplitConfirmHtml() {
                     let html = `
-                <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(document.getElementById('date').value)}</span></div>
+                <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(formState.date)}</span></div>
                 <div class="confirm-item"><span class="confirm-label">Narration</span><span class="confirm-val">${narrationVal}</span></div>
                 <div class="confirm-item"><span class="confirm-label">Invoice No.</span><span class="confirm-val">${invoiceVal}</span></div>
                 <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${refVal}</span></div>
@@ -3353,21 +3340,14 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 <div class="confirm-item"><span class="confirm-label">Spent For</span><span class="confirm-val">${sFinal}</span></div>
                 <div class="confirm-item"><span class="confirm-label">Flow</span><span class="confirm-val">${currentFlow}</span></div>
                 <div class="confirm-item"><span class="confirm-label">Split Mode</span><span class="confirm-val">Enabled</span></div>
-                <div class="confirm-item"><span class="confirm-label">Personal Share</span><span class="confirm-val">₹${Number(splitData.personal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                <div class="confirm-item"><span class="confirm-label">Personal Share</span><span class="confirm-val">₹${Number(formState.personal_share || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                 <div class="confirm-section-title">Recipients</div>`;
-                    splitData.recipients.forEach(r => {
+                    (formState.recipients || []).forEach(r => {
                         html += `<div class="confirm-item"><span class="confirm-label">${r.name}</span><span class="confirm-val">₹${Number(r.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
                     });
                     html += `<div class="confirm-section-title">Payments</div>`;
-                    formState.payments.forEach(p => {
+                    (formState.payments || []).forEach(p => {
                         html += `<div class="confirm-item" style="border-bottom:none"><span class="confirm-label">${p.account} (${p.type})</span><span class="confirm-val">₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
-                        if (p.denominations) {
-                            html += `<div class="confirm-matrix-grid">`;
-                            Object.entries(p.denominations).forEach(([val, count]) => {
-                                if (count > 0 || count < 0) html += `<div class="confirm-matrix-card"><span>₹${val}</span><strong>${count}</strong></div>`;
-                            });
-                            html += `</div>`;
-                        }
                     });
                     html += `<div class="confirm-item" style="border:none"><span class="confirm-label" style="color:var(--primary)">Total Amount</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">${gTotalStr}</span></div>`;
                     return html;
@@ -3376,39 +3356,9 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 const htmlToRender = buildSplitConfirmHtml();
                 document.getElementById('confirmDetails').innerHTML = htmlToRender;
                 window.currentSaveStats.fullHtml = htmlToRender;
-
                 localStorage.setItem("lastPackage", JSON.stringify(repeatData));
-                trainPurpose(narrationVal, pFinal);
-
-                if (isRecurring) {
-                    const template = {
-                        narration: narrationVal,
-                        purpose: pFinal,
-                        spent_for: sFinal,
-                        flow: currentFlow,
-                        payments: formState.payments,
-                        date: document.getElementById("date").value,
-                        frequency: document.getElementById("recurringType").value,
-                        customDays: document.getElementById("customDays")?.value || null,
-                        active: true,
-                        split_enabled: true,
-                        personal_share: splitData.personal,
-                        recipients: splitData.recipients
-                    };
-                    let list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
-                    if (window.editRecurringIndex !== undefined) {
-                        list[window.editRecurringIndex] = template;
-                        window.editRecurringIndex = undefined;
-                        showToast("✏️ Recurring template updated");
-                    } else {
-                        list.push(template);
-                        showToast("⏳ Recurring template saved");
-                    }
-                    localStorage.setItem("recurringTemplates", JSON.stringify(list));
-                    syncRecurringBackup();
-                    fullReset();
-                    return;
-                }
+                
+                if (typeof trainPurpose === 'function') trainPurpose(narrationVal, pFinal);
 
                 if (isEdit) {
                     if (!isOnline || isBatch) saveToDB();
@@ -3421,34 +3371,35 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 return;
             }
 
-            document.querySelectorAll('#paymentContainer .payment-row-wrapper').forEach(row => {
-                const accSel = row.querySelector('.row-acc');
-                const aFinal = accSel.value === 'Other' ? row.querySelector('.row-acc-other').value : accSel.value;
-                const finalAmt = window.evalMath(row.querySelector('.row-amt').value);
-
+            // STANDARD TRANSACTION
+            (formState.payments || []).forEach(payment => {
+                const finalAmt = Number(payment.amount) || 0;
                 const p = new URLSearchParams({
-                    date: document.getElementById('date').value,
+                    date: formState.date || getTodayIST(),
                     narration: narrationVal,
-                    invoice_no: document.getElementById('invoice_no').value,
+                    invoice_no: invoiceVal,
                     reference: refVal,
                     purpose: pFinal,
                     spent_for: sFinal,
                     flow: currentFlow,
-                    trtype: row.querySelector('.row-type').value,
-                    from_to: aFinal,
+                    trtype: payment.type || 'Unknown',
+                    from_to: payment.account || 'Unknown',
                     withdrawn: currentFlow === 'withdraw' ? finalAmt : 0,
                     deposit: currentFlow === 'deposit' ? finalAmt : 0,
                     category: "monthly transactions"
                 });
-                if (row.querySelector('.row-type').value === "CASH") {
-                    row.querySelectorAll(".row-denom-input").forEach(i => p.append("d" + i.dataset.val, i.value || 0));
+                
+                if (payment.type && payment.type.toUpperCase() === "CASH" && payment.denominations) {
+                    Object.entries(payment.denominations).forEach(([val, count]) => {
+                        if (count) p.append("d" + val, count);
+                    });
                 }
                 window.currentPayloads.push(p.toString());
                 repeatData.push(p.toString());
             });
 
             let detailsHtml = `
-            <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(document.getElementById('date').value)}</span></div>
+            <div class="confirm-item"><span class="confirm-label">Date</span><span class="confirm-val">${formatDisplayDate(formState.date)}</span></div>
             <div class="confirm-item"><span class="confirm-label">Narration</span><span class="confirm-val">${narrationVal}</span></div>
             <div class="confirm-item"><span class="confirm-label">Invoice No.</span><span class="confirm-val">${invoiceVal}</span></div>
             <div class="confirm-item"><span class="confirm-label">Ref</span><span class="confirm-val">${refVal}</span></div>
@@ -3458,7 +3409,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             <div class="confirm-item" style="border:none"><span class="confirm-label" style="color:var(--primary)">Total Amount</span><span class="confirm-val" style="color:var(--primary);font-weight:bold">${gTotalStr}</span></div>
             <br>
             <div class="confirm-section-title">Payments</div>
-          `;
+            `;
 
             window.currentPayloads.forEach(payloadStr => {
                 const p = new URLSearchParams(payloadStr);
@@ -3470,38 +3421,11 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             window.currentSaveStats.fullHtml = detailsHtml;
 
             localStorage.setItem("lastPackage", JSON.stringify(repeatData));
-            trainPurpose(narrationVal, pFinal);
-
-            if (isRecurring) {
-                const template = {
-                    narration: narrationVal,
-                    purpose: pFinal,
-                    spent_for: sFinal,
-                    flow: currentFlow,
-                    payments: window.currentPayloads,
-                    date: document.getElementById("date").value,
-                    frequency: document.getElementById("recurringType").value,
-                    customDays: document.getElementById("customDays")?.value || null,
-                    active: true
-                };
-                let list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
-                if (window.editRecurringIndex !== undefined) {
-                    list[window.editRecurringIndex] = template;
-                    window.editRecurringIndex = undefined;
-                    showToast("⏳ Recurring template updated");
-                } else {
-                    list.push(template);
-                    showToast("⏳ Recurring template saved");
-                }
-                localStorage.setItem("recurringTemplates", JSON.stringify(list));
-                syncRecurringBackup();
-                fullReset();
-                return;
-            }
+            if (typeof trainPurpose === 'function') trainPurpose(narrationVal, pFinal);
 
             if (isEdit) {
                 if (!isOnline || isBatch) saveToDB();
-                else processSave();
+                else processSave(); // Passes verified payload directly to the network
                 return;
             }
 
@@ -3509,48 +3433,76 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             else document.getElementById('confirmModal').classList.remove('hidden');
         }
 
+
         async function processSave() {
-    document.getElementById('confirmModal').classList.add('hidden');
-    const btn = document.getElementById('submitBtn');
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="saving-text">Saving...</span>`;
-    try {
-        for (let body of window.currentPayloads) {
-            await fetch(SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: body
-            });
-        }
-        showToast("✔ Transaction Saved");
-        handleBikeTaxiTripIncrement();
-        updateRecurringNextDate();
-        const currentDate = document.getElementById('date').value || getTodayIST();
-        await fetchLogsForDateRange(currentDate, currentDate);
-        window.currentSaveStats = null;
+            document.getElementById('confirmModal').classList.add('hidden');
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="saving-text">Saving...</span>`;
+            
+            let isNetworkSuccess = false;
 
-        if (multiTxnQueue.length > 0) {
-            multiTxnQueue.splice(multiTxnIndex, 1);
-            if (multiTxnQueue.length > 0) {
-                if (multiTxnIndex >= multiTxnQueue.length) multiTxnIndex = multiTxnQueue.length - 1;
-                loadMultiTxn();
-            } else {
-                document.getElementById('multiTxnNav').classList.add('hidden');
-                fullReset(batchMode);
+            // 1. ISOLATED NETWORK BLOCK
+            try {
+                for (let body of window.currentPayloads) {
+                    await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: body
+                    });
+                }
+                isNetworkSuccess = true;
+            } catch (err) {
+                console.error("Network save failed:", err);
+                saveToDB(); 
+                showToast("📦 Saved offline", "#3b82f6");
             }
-        } else {
-            fullReset(batchMode);
-        }
 
-    } catch (err) {
-        saveToDB();
-        showToast("📦 Saved offline", "#3b82f6");
-    } finally { 
-        btn.disabled = false; 
-        btn.textContent = originalText; 
-    }
-}
+            // 2. ISOLATED UI UPDATE BLOCK
+            if (isNetworkSuccess) {
+                try {
+                    showToast("✔ Transaction Saved");
+                    
+                    // ==========================================
+                    // CLEAR THE FORM FIRST!
+                    // Guaranteeing the reset happens before background fetches can crash
+                    // ==========================================
+                    window.currentSaveStats = null;
+                    if (typeof multiTxnQueue !== 'undefined' && multiTxnQueue.length > 0) {
+                        multiTxnQueue.splice(multiTxnIndex, 1);
+                        if (multiTxnQueue.length > 0) {
+                            if (multiTxnIndex >= multiTxnQueue.length) multiTxnIndex = multiTxnQueue.length - 1;
+                            loadMultiTxn();
+                        } else {
+                            document.getElementById('multiTxnNav').classList.add('hidden');
+                            fullReset(batchMode);
+                        }
+                    } else {
+                        fullReset(batchMode);
+                    }
+
+                    // ==========================================
+                    // RUN BACKGROUND TASKS LAST
+                    // ==========================================
+                    if (typeof handleBikeTaxiTripIncrement === 'function') handleBikeTaxiTripIncrement();
+                    if (typeof updateRecurringNextDate === 'function') updateRecurringNextDate();
+                    
+                    // Fetch latest logs (Running completely detached so errors here don't break the UI)
+                    const currentDate = document.getElementById('date').value || getTodayIST();
+                    if (typeof fetchLogsForDateRange === 'function') {
+                        fetchLogsForDateRange(currentDate, currentDate).catch(e => console.error("Background Log Fetch Error:", e));
+                    }
+                    
+                } catch (uiErr) {
+                    console.error("UI update after save failed:", uiErr);
+                }
+            }
+            
+            btn.disabled = false; 
+            btn.textContent = originalText; 
+        }
 
 
         async function syncAllData() {
@@ -3601,11 +3553,15 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
 }
 
 
-        document.getElementById('btnConfirmEditSave').onclick = async function() {
+                document.getElementById('btnConfirmEditSave').onclick = async function() {
             const oldLogId = window._oldLogId;
-            const ref = window._editRef;
+            const oldRef = window._editRef;
             const newState = window._newFormState;
-            if (!oldLogId || !newState) { showToast("Edit data missing", "var(--danger)"); return; }
+
+            if (!oldLogId || !newState) { 
+                showToast("Edit data missing", "var(--danger)"); 
+                return; 
+            }
 
             document.getElementById('editCompareModal').classList.add('hidden');
            
@@ -3615,25 +3571,45 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             btn.disabled = true;
 
             try {
+                // 1. Safely remove from local cache immediately
                 const data = getDailyTxns();
-                data.txns = data.txns.filter(t => t.id !== oldLogId);
-                localStorage.setItem('daily_txns', JSON.stringify(data));
-                renderSessionDashboard();
-                renderDailyTxnsModal();
+                if (data && Array.isArray(data.txns)) {
+                    data.txns = data.txns.filter(t => t.id !== oldLogId);
+                    localStorage.setItem('daily_txns', JSON.stringify(data));
+                }
+                
+                // Safely update UI without crashing if functions are missing
+                if (typeof renderSessionDashboard === 'function') renderSessionDashboard();
+                if (typeof renderDailyTxnsModal === 'function') renderDailyTxnsModal();
 
                 showToast("🗑️ Deleting old record...");
 
-                if (ref) {
-                    await fetch(`${DELETE_URL}?action=delete&value=${encodeURIComponent(ref)}`, { method: "GET", mode: "no-cors" });
+                // 2. Safely delete old record from backend
+                if (oldRef) {
+                    try {
+                        await fetch(`${DELETE_URL}?action=delete&value=${encodeURIComponent(oldRef)}`, { method: "GET", mode: "no-cors" });
+                        await new Promise(resolve => setTimeout(resolve, 800)); // Let Google Sheets breathe
+                    } catch (delErr) {
+                        console.warn("Delete command sent (ignoring no-cors warnings)");
+                    }
                 }
 
-                showToast("💾 Saving updated record...");
+                // 3. Generate a brand new unique Reference ID to prevent Google Sheets duplicate blocking
+                const now = new Date();
+                const datePart = now.toISOString().split('T')[0].replace(/-/g, '');
+                const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+                const newRef = `REF-${datePart}-${randomPart}`;
+                
+                newState.reference = newRef;
 
-                proceedWithSave(ref, newState, true);
+                showToast("💾 Saving updated record...");
+                
+                // 4. Send exactly the verified state to save
+                proceedWithSave(newRef, newState, true);
 
             } catch (err) {
-                console.error("Edit update failed:", err);
-                showToast("Update failed!", "var(--danger)");
+                console.error("Edit update CRASHED:", err);
+                showToast("Update failed! Check console.", "var(--danger)");
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -5319,7 +5295,7 @@ window.editQueue = (idx) => {
             window.addRecipientRow = function(initialName, initialAmount) {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'recipient-row swipe-wrapper';
-                const standardOptions = ["Mother", "Grand Father", "Chinnama", "Family", "Pedhamma", "Vasavi", "Sandeep"];
+                const standardOptions = ["Mother", "Grand Father", "Chinnama", "Pedhamma", "Vasavi", "Sandeep"];
                 const isContactApiSupported = ('contacts' in navigator && 'ContactsManager' in window);
                 rowDiv.innerHTML = `
               <div class="swipe-content recipient-swipe-content">
