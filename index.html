@@ -1567,7 +1567,11 @@ document.querySelectorAll('#mathKeyboard .kb-key').forEach(btn => {
         document.getElementById('biketaxiBtn').addEventListener('click', () => setMode('biketaxi', !bikeTaxiMode));
         document.getElementById('batchModeBtn').addEventListener('click', () => setMode('batch', !batchMode));
         document.getElementById('recurringModeBtn').addEventListener('click', () => setMode('recurring', !recurringMode));
-        document.getElementById('splitModeBtn').addEventListener('click', () => setMode('split', !splitMode));
+        document.getElementById('splitModeBtn').addEventListener('click', () => {
+    setMode('split', !splitMode);
+    if (splitMode && window.updateSplitFromSpentFor) window.updateSplitFromSpentFor();
+});
+
         document.getElementById('selfTransferBtn').addEventListener('click', () => setMode('selfTransfer', !selfTransferMode));
 // --- AUTO-INCREMENT TRIP COUNTER ON SUBMIT ---
 function handleBikeTaxiTripIncrement() {
@@ -1590,7 +1594,7 @@ function handleBikeTaxiTripIncrement() {
                 if (state) { recurringMode = true; if (batchMode) setMode('batch', false);
                     document.getElementById('recurringOptions').classList.remove('hidden'); } else { recurringMode = false;
                     document.getElementById('recurringOptions').classList.add('hidden'); }
-              } else if (mode === 'split') {
+                } else if (mode === 'split') {
                 splitMode = state;
                 if (splitMode && selfTransferMode) setMode('selfTransfer', false);
                 document.getElementById('splitPanel').style.display = splitMode ? 'block' : 'none';
@@ -1606,17 +1610,23 @@ function handleBikeTaxiTripIncrement() {
                 const spentForSel = document.getElementById('spent_for');
                 const spentForOther = document.getElementById('spent_for_other');
                 const spentForGroup = document.getElementById('spentForGroup');
-                
-                spentForSel.disabled = splitMode;
-                spentForGroup.classList.toggle('hidden', splitMode);
-                
-                if (splitMode) {
-                    spentForOther.disabled = true;
-                } else if (spentForSel.value === 'Other') {
+
+                // 1. Keep it visible and enabled even in split mode
+                spentForGroup.classList.remove('hidden');
+                spentForSel.disabled = false;
+
+                // 2. Keep the 'Other' text box behavior intact
+                if (spentForSel.value === 'Other') {
                     spentForOther.disabled = false;
+                } else {
+                    spentForOther.disabled = true;
                 }
 
-                if (splitMode) { if (window.calcSplitDifference) window.calcSplitDifference(); }
+                if (splitMode) {
+                    // Trigger the new sync function when split mode is turned on
+                    if (window.updateSplitFromSpentFor) window.updateSplitFromSpentFor();
+                    if (window.calcSplitDifference) window.calcSplitDifference(); 
+                }
             } else if (mode === 'selfTransfer') {
 
                 selfTransferMode = state;
@@ -2639,12 +2649,21 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                 renderQueue(items);
             };
         }
-
         function updateGrandTotal() {
             let total = 0;
-            document.querySelectorAll('#paymentContainer .row-amt').forEach(input => { total += window.evalMath(input.value) || 0; });
+            document.querySelectorAll('#paymentContainer .row-amt').forEach(input => {
+                total += window.evalMath(input.value) || 0;
+            });
             document.getElementById('grandTotal').textContent = `₹${total.toFixed(2)}`;
-            if (splitMode) { if (window.calcSplitDifference) window.calcSplitDifference(); }
+
+            // Sync full amount to recipient if not multi-split
+            if (splitMode && document.getElementById('spent_for').value !== 'Split') {
+                if (window.updateSplitFromSpentFor) window.updateSplitFromSpentFor();
+            }
+
+            if (splitMode && window.calcSplitDifference) {
+                window.calcSplitDifference();
+            }
         }
 
         async function loadPurposeMemory() {
@@ -2943,7 +2962,7 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
                         if (selfTransferMode) window.calcStTotals();
                         else updateGrandTotal();
                         if (window.calcSplitDifference) window.calcSplitDifference(); 
-                      if (window.checkSplitSpentFor) window.checkSplitSpentFor();
+                      
                     }, 200);
                 } else if (currentX < -50 && !canDelete) {
                     content.style.transition = "transform 0.15s ease";
@@ -5350,27 +5369,63 @@ window.editQueue = (idx) => {
         (function() {
             const recipientsContainer = document.getElementById('recipientsContainer');
             const globalModeBtn = document.getElementById('globalSplitMode');
-                        window.checkSplitSpentFor = function() {
-                if (!splitMode) return;
-                const hasPersonalShare = document.getElementById('personalShareWrapper') !== null;
-                const recipientRows = document.querySelectorAll('.recipient-row:not(#personalShareWrapper)');
-                const totalParties = (hasPersonalShare ? 1 : 0) + recipientRows.length;
-                const spentForSelect = document.getElementById('spent_for');
-                const otherInput = document.getElementById('spent_for_other');
-                
-                if (totalParties > 1) {
-                    setSelectOrOther(spentForSelect, otherInput, 'spentSmartRow', 'Split');
-                } else if (totalParties === 1 && !hasPersonalShare) {
-                    const sel = recipientRows[0].querySelector('.recipient-select');
-                    const name = sel.value === 'Other' ? recipientRows[0].querySelector('.recipient-other-input').value : sel.value;
-                    setSelectOrOther(spentForSelect, otherInput, 'spentSmartRow', name || 'Self');
-                } else {
-                    setSelectOrOther(spentForSelect, otherInput, 'spentSmartRow', 'Self');
-                }
-                          spentForSelect.disabled = true;
-                otherInput.disabled = true;
+                        
+// --- AUTO-FILL SPLIT FROM "SPENT FOR" ---
+window.updateSplitFromSpentFor = function() {
+    if (!splitMode) return;
 
-            };
+    const spentForSel = document.getElementById('spent_for').value;
+    const otherInput = document.getElementById('spent_for_other').value.trim();
+    const finalName = spentForSel === 'Other' ? otherInput : spentForSel;
+
+    // Target the main containers
+    const splitHeaderRow = document.querySelector('#splitPanel > div:first-child'); // The row with the label & buttons
+    const recipientsContainer = document.getElementById('recipientsContainer');
+    const personalShareContainer = document.getElementById('personalShareContainer');
+
+    // Read current total amount from the form
+    const grandTotal = parseFloat(document.getElementById('grandTotal').textContent.replace('₹', '')) || 0;
+    const formattedTotal = grandTotal > 0 ? grandTotal.toFixed(2) : '';
+
+    if (finalName === 'Split') {
+        // --- MULTI-SPLIT MODE: Show everything ---
+        if (splitHeaderRow) splitHeaderRow.style.display = 'flex'; // Uses flex layout
+        if (personalShareContainer) personalShareContainer.style.display = 'block';
+        if (recipientsContainer) recipientsContainer.style.display = 'block';
+
+    } else {
+        // --- SINGLE RECIPIENT MODE: Hide EVERYTHING visually ---
+        if (splitHeaderRow) splitHeaderRow.style.display = 'none';
+        if (personalShareContainer) personalShareContainer.style.display = 'none';
+        if (recipientsContainer) recipientsContainer.style.display = 'none';
+
+        recipientsContainer.innerHTML = ''; // Clear previous
+
+        if (finalName === 'Self') {
+            // Fill 100% to Personal Share quietly in the background
+            if (!document.getElementById('personalShareWrapper')) {
+                window.restorePersonalShare();
+            }
+            const psInput = document.getElementById('personalShare');
+            if (psInput) psInput.value = formattedTotal;
+
+        } else if (finalName && finalName !== 'Select') {
+            // Remove personal share, create single recipient quietly in the background
+            const psWrapper = document.getElementById('personalShareWrapper');
+            if (psWrapper) psWrapper.remove();
+
+            if (typeof window.addRecipientRow === 'function') {
+                window.addRecipientRow(finalName, formattedTotal);
+            }
+        }
+    }
+
+    if (window.calcSplitDifference) window.calcSplitDifference();
+};
+// Attach listeners so it updates instantly when you change "Spent For"
+document.getElementById('spent_for').addEventListener('change', window.updateSplitFromSpentFor);
+document.getElementById('spent_for_other').addEventListener('input', window.updateSplitFromSpentFor);
+
 
             window.calcSplitDifference = function() {
                 if (!splitMode) return;
@@ -5436,21 +5491,18 @@ window.editQueue = (idx) => {
                     const isOther = select.value === 'Other';
                     otherWrapper.classList.toggle('hidden', !isOther);
                     if (isOther) otherWrapper.querySelector('input').focus();
-                    if (window.checkSplitSpentFor) window.checkSplitSpentFor();
-                };
+                     };
                 const recipientOtherInput = rowDiv.querySelector('.recipient-other-input');
                 if (recipientOtherInput) {
                     recipientOtherInput.addEventListener('input', () => {
-                        if (window.checkSplitSpentFor) window.checkSplitSpentFor();
-                    });
+                        });
                 }
 
                 if (pickerBtn) { pickerBtn.onclick = () => selectFromContacts(otherWrapper.querySelector('input')); }
                 recipientsContainer.appendChild(rowDiv);
                 enableSwipeToDelete(rowDiv, 0);
                 if (window.calcSplitDifference) window.calcSplitDifference();
-              if (window.checkSplitSpentFor) window.checkSplitSpentFor();
-            };
+             };
 
             async function selectFromContacts(targetInput) {
                 const props = ['name'];
@@ -5460,8 +5512,7 @@ window.editQueue = (idx) => {
                     if (contacts.length > 0 && contacts[0].name && contacts[0].name.length > 0) {
                                                 targetInput.value = contacts[0].name[0];
                         showToast("👤 Contact imported");
-                        if (window.checkSplitSpentFor) window.checkSplitSpentFor();
-                    }
+                       }
 
                 } catch (ex) {
                     if (ex.name !== 'AbortError') { console.error('Contact Picker Error:', ex); showToast("Failed to open contacts", "var(--danger)"); }
@@ -5536,8 +5587,7 @@ window.editQueue = (idx) => {
                 `;
                                                 enableSwipeToDelete(document.getElementById('personalShareWrapper'), 0);
                         if (window.calcSplitDifference) window.calcSplitDifference();
-                        if (window.checkSplitSpentFor) window.checkSplitSpentFor(); // ADDED THIS
-                    }
+                                         }
                 }
             };
 
@@ -5549,7 +5599,7 @@ window.editQueue = (idx) => {
                 recipientsContainer.innerHTML = '';
                 globalModeBtn.textContent = 'Value';
                 if (window.calcSplitDifference) window.calcSplitDifference();
-              if (window.checkSplitSpentFor) window.checkSplitSpentFor();
+            
             };
 
             const initialPersonalShare = document.getElementById('personalShareWrapper');
