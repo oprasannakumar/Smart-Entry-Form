@@ -3107,29 +3107,27 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
             };
         }
 
-function buildEditCompareHtml(oldState, newState) {
+        function buildEditCompareHtml(oldState, newState) {
     let html = `<div class="col-header left">Existing</div><div class="col-header center">Field</div><div class="col-header right">New</div>`;
+    let hasChanges = false;
 
-    // 1. Core Row Generator
+    // 1. Core Row Generator - ONLY adds the row if there's a difference!
     function addRow(labelHtml, oldVal, newVal) {
         const oldStr = (oldVal !== undefined && oldVal !== null && oldVal !== "") ? String(oldVal) : "-";
         const newStr = (newVal !== undefined && newVal !== null && newVal !== "") ? String(newVal) : "-";
-        const diff = oldStr !== newStr;
-        const oldCls = diff ? 'val-box old-diff' : 'val-box';
-        const newCls = diff ? 'val-box new-diff' : 'val-box';
         
-        html += `<div class="${oldCls}" style="padding:4px 6px; font-size:11.5px; line-height:1.2; display:flex; flex-direction:column; justify-content:center;">${oldStr}</div>
+        // SKIP THIS ROW IF NOTHING CHANGED
+        if (oldStr === newStr) return; 
+        
+        hasChanges = true;
+        html += `<div class="val-box old-diff" style="padding:6px; font-size:11.5px; line-height:1.2; display:flex; flex-direction:column; justify-content:center;">${oldStr}</div>
                  <div class="field-label" style="font-size:11.5px; padding:0 4px; text-align:center; line-height:1.3; display:flex; flex-direction:column; justify-content:center; white-space:normal; word-break:break-word;">${labelHtml}</div>
-                 <div class="${newCls}" style="padding:4px 6px; font-size:11.5px; line-height:1.2; display:flex; flex-direction:column; justify-content:center;">${newStr}</div>`;
-    }
-
-    function addHeading(text) {
-        html += `<div class="diff-heading" style="margin-top:6px; margin-bottom:4px;"><span>${text}</span></div>`;
+                 <div class="val-box new-diff" style="padding:6px; font-size:11.5px; line-height:1.2; display:flex; flex-direction:column; justify-content:center;">${newStr}</div>`;
     }
 
     // 2. Formats ONLY the amount and cash denominations for the side columns
     function formatAmt(p) {
-        if (!p) return "-";
+        if (!p) return "None";
         let res = `₹${Number(p.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         if (p.type && p.type.toUpperCase() === 'CASH' && p.denominations) {
             const denomsStr = Object.entries(p.denominations)
@@ -3148,7 +3146,7 @@ function buildEditCompareHtml(oldState, newState) {
     addRow("Narration", oldState.narration, newState.narration);
     addRow("Reference", oldState.reference, newState.reference);
 
-    if (!newState.self_transfer) {
+    if (!newState.self_transfer && !oldState.self_transfer) {
         addRow("Invoice", oldState.invoice_no, newState.invoice_no);
         addRow("Purpose", oldState.purpose, newState.purpose);
         addRow("Spent For", oldState.spent_for, newState.spent_for);
@@ -3160,7 +3158,6 @@ function buildEditCompareHtml(oldState, newState) {
 
         // --- SPLIT BREAKDOWN ---
         if (oldState.split_enabled || newState.split_enabled) {
-            addHeading("Split Details");
             addRow("Personal Share", `₹${Number(oldState.personal_share || 0).toFixed(2)}`, `₹${Number(newState.personal_share || 0).toFixed(2)}`);
             const recipientsSet = new Set();
             (oldState.recipients || []).forEach(r => recipientsSet.add(r.name));
@@ -3168,12 +3165,11 @@ function buildEditCompareHtml(oldState, newState) {
             recipientsSet.forEach(name => {
                 const oldR = (oldState.recipients || []).find(r => r.name === name);
                 const newR = (newState.recipients || []).find(r => r.name === name);
-                addRow(name, oldR ? `₹${Number(oldR.amount || 0).toFixed(2)}` : "-", newR ? `₹${Number(newR.amount || 0).toFixed(2)}` : "-");
+                addRow(`Split:<br>${name}`, oldR ? `₹${Number(oldR.amount || 0).toFixed(2)}` : "None", newR ? `₹${Number(newR.amount || 0).toFixed(2)}` : "None");
             });
         }
 
         // --- PAYMENT MODES ---
-        addHeading("Payment Modes");
         const paymentsSet = new Set();
         (oldState.payments || []).forEach(p => paymentsSet.add(`${p.account}::${p.type}`));
         (newState.payments || []).forEach(p => paymentsSet.add(`${p.account}::${p.type}`));
@@ -3183,7 +3179,6 @@ function buildEditCompareHtml(oldState, newState) {
             const newP = (newState.payments || []).find(p => `${p.account}::${p.type}` === key);
             
             const refP = oldP || newP;
-            // The span holding refP.account is configured to wrap text and limit to 2 lines max
             const centerLabel = `<span style="font-weight:700; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; word-break:break-word;">${refP.account}</span><span style="font-size:10px; color:var(--text-label); font-weight:600; margin-top:2px;">${refP.type}</span>`;
             
             addRow(centerLabel, formatAmt(oldP), formatAmt(newP));
@@ -3195,7 +3190,6 @@ function buildEditCompareHtml(oldState, newState) {
         addRow("Transfer Amount", `₹${oldTotalOut.toFixed(2)}`, `₹${newTotalOut.toFixed(2)}`);
 
         // --- SELF TRANSFER SOURCES ---
-        addHeading("Sources (From)");
         const sourcesSet = new Set();
         (oldState.sources || []).forEach(p => sourcesSet.add(`${p.account}::${p.type}`));
         (newState.sources || []).forEach(p => sourcesSet.add(`${p.account}::${p.type}`));
@@ -3205,13 +3199,12 @@ function buildEditCompareHtml(oldState, newState) {
             const newP = (newState.sources || []).find(p => `${p.account}::${p.type}` === key);
             
             const refP = oldP || newP;
-            const centerLabel = `<span style="font-weight:700; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; word-break:break-word;">${refP.account}</span><span style="font-size:10px; color:var(--text-label); font-weight:600; margin-top:2px;">${refP.type}</span>`;
+            const centerLabel = `<span style="color:var(--danger); font-weight:700;">From:</span><br><span style="font-weight:700;">${refP.account}</span><br><span style="font-size:10px;">${refP.type}</span>`;
             
             addRow(centerLabel, formatAmt(oldP), formatAmt(newP));
         });
 
         // --- SELF TRANSFER DESTINATIONS ---
-        addHeading("Destinations (To)");
         const destsSet = new Set();
         (oldState.destinations || []).forEach(p => destsSet.add(`${p.account}::${p.type}`));
         (newState.destinations || []).forEach(p => destsSet.add(`${p.account}::${p.type}`));
@@ -3221,16 +3214,19 @@ function buildEditCompareHtml(oldState, newState) {
             const newP = (newState.destinations || []).find(p => `${p.account}::${p.type}` === key);
             
             const refP = oldP || newP;
-            const centerLabel = `<span style="font-weight:700; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; word-break:break-word;">${refP.account}</span><span style="font-size:10px; color:var(--text-label); font-weight:600; margin-top:2px;">${refP.type}</span>`;
+            const centerLabel = `<span style="color:var(--primary); font-weight:700;">To:</span><br><span style="font-weight:700;">${refP.account}</span><br><span style="font-size:10px;">${refP.type}</span>`;
             
             addRow(centerLabel, formatAmt(oldP), formatAmt(newP));
         });
     }
 
+    // Fallback if somehow they trigger an edit but there are 0 real differences
+    if (!hasChanges) {
+        html += `<div style="grid-column: 1 / -1; padding: 15px; text-align: center; color: var(--text-label); font-weight: 600;">No changes detected.</div>`;
+    }
+
     return html;
 }
-
-
         function normalizeState(state) {
             if (state.self_transfer) {
                 return {
