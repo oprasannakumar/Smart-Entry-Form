@@ -5379,25 +5379,35 @@ window.updateSplitFromSpentFor = function() {
     const finalName = spentForSel === 'Other' ? otherInput : spentForSel;
 
     // Target the main containers
-    const splitHeaderRow = document.querySelector('#splitPanel > div:first-child'); // The row with the label & buttons
+    const splitHeaderRow = document.querySelector('#splitPanel > div:first-child');
     const recipientsContainer = document.getElementById('recipientsContainer');
     const personalShareContainer = document.getElementById('personalShareContainer');
+    
+    // Target Difference Label and Amount
+    const diffContainer = document.getElementById('splitDiffContainer');
+    const diffLabel = document.getElementById('splitDiffLabel');
 
     // Read current total amount from the form
     const grandTotal = parseFloat(document.getElementById('grandTotal').textContent.replace('₹', '')) || 0;
     const formattedTotal = grandTotal > 0 ? grandTotal.toFixed(2) : '';
 
     if (finalName === 'Split') {
-        // --- MULTI-SPLIT MODE: Show everything ---
-        if (splitHeaderRow) splitHeaderRow.style.display = 'flex'; // Uses flex layout
+        // --- MULTI-SPLIT MODE: Show everything visually ---
+        if (splitHeaderRow) splitHeaderRow.style.display = 'flex';
         if (personalShareContainer) personalShareContainer.style.display = 'block';
         if (recipientsContainer) recipientsContainer.style.display = 'block';
+        
+        if (diffContainer) diffContainer.classList.remove('hidden');
+        if (diffLabel) diffLabel.classList.remove('hidden');
 
     } else {
         // --- SINGLE RECIPIENT MODE: Hide EVERYTHING visually ---
         if (splitHeaderRow) splitHeaderRow.style.display = 'none';
         if (personalShareContainer) personalShareContainer.style.display = 'none';
         if (recipientsContainer) recipientsContainer.style.display = 'none';
+        
+        if (diffContainer) diffContainer.classList.add('hidden');
+        if (diffLabel) diffLabel.classList.add('hidden');
 
         recipientsContainer.innerHTML = ''; // Clear previous
 
