@@ -3228,31 +3228,57 @@ document.getElementById('clearLogSearch').addEventListener('click', function() {
     return html;
 }
         function normalizeState(state) {
+            // Helper to strictly format payments/sources/destinations to ensure exact matching
+            const normalizePmts = (arr) => {
+                return (arr || []).map(p => {
+                    const pmt = { 
+                        type: String(p.type || "").toUpperCase(), // Fixes "Debit" vs "DEBIT" mismatch
+                        account: String(p.account || "").trim(), 
+                        amount: Number(p.amount) || 0 
+                    };
+                    
+                    // Track cash denomination changes accurately (ignoring zeros)
+                    if (pmt.type === 'CASH' && p.denominations) {
+                        const cleanDenoms = {};
+                        Object.entries(p.denominations).forEach(([val, count]) => {
+                            if (Number(count) > 0) cleanDenoms[val] = Number(count);
+                        });
+                        if (Object.keys(cleanDenoms).length > 0) {
+                            pmt.denominations = cleanDenoms;
+                        }
+                    }
+                    return pmt;
+                });
+            };
+
             if (state.self_transfer) {
                 return {
                     date: state.date || "",
-                    narration: state.narration || "",
-                    reference: state.reference || "",
+                    narration: String(state.narration || "").trim(),
+                    reference: String(state.reference || "").trim(),
                     self_transfer: true,
-                    sources: (state.sources || []).map(p => ({ type: p.type || "", account: p.account || "", amount: Number(p.amount) || 0 })),
-                    destinations: (state.destinations || []).map(p => ({ type: p.type || "", account: p.account || "", amount: Number(p.amount) || 0 }))
+                    sources: normalizePmts(state.sources),
+                    destinations: normalizePmts(state.destinations)
                 };
             }
+            
             return {
                 date: state.date || "",
-                narration: state.narration || "",
-                invoice_no: state.invoice_no || "",
-                reference: state.reference || "",
-                purpose: state.purpose || "",
-                spent_for: state.spent_for || "",
-                flow: state.flow || "",
-                payments: (state.payments || []).map(p => ({ type: p.type || "", account: p.account || "", amount: Number(p.amount) || 0 })),
+                narration: String(state.narration || "").trim(),
+                invoice_no: String(state.invoice_no || "").trim(),
+                reference: String(state.reference || "").trim(),
+                purpose: String(state.purpose || "").trim(),
+                spent_for: String(state.spent_for || "").trim(),
+                flow: String(state.flow || "").toLowerCase().trim(),
+                payments: normalizePmts(state.payments),
                 split_enabled: !!state.split_enabled,
                 personal_share: Number(state.personal_share) || 0,
-                recipients: (state.recipients || []).map(r => ({ name: r.name || "", amount: Number(r.amount) || 0 }))
+                recipients: (state.recipients || []).map(r => ({ 
+                    name: String(r.name || "").trim(), 
+                    amount: Number(r.amount) || 0 
+                }))
             };
         }
-
         document.getElementById('txnForm').onsubmit = function(e) {
             e.preventDefault();
             const form = e.target;
