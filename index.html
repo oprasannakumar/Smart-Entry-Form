@@ -851,7 +851,7 @@
                     <h3 style="margin:0;font-size:16px;color:var(--secondary);">🤝 Loan Borrower Finder</h3>
                     <span style="cursor:pointer;font-size:18px;" onclick="closeBorrowerModal()">✕</span>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:12px;max-height:75vh;overflow-y:auto;padding-right:4px;">
+                <div style="display:flex;flex-direction:column;gap:12px;max-height:75vh;overflow-y:none;padding-right:4px;">
                     <div>
                         <label style="margin-top:0;">Select Borrower</label>
                         <select id="borrowerSelect" onchange="renderSelectedBorrowerDetails()" style="width:100%; height:38px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-main); font-size:13px; padding:0 10px;">
@@ -2076,11 +2076,11 @@ const amountColor = isGiven ? 'var(--danger)' : 'var(--primary)';
 
 return `
     <div style="background:var(--bg-input); padding:7px 10px; border-radius:8px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
-        <div style="min-width:0; flex:1; padding-right:4px;">
+        <div style="min-width:0; flex:2; padding-right:4px;">
             <strong style="color:var(--text-main); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.narration || 'Loan Entry'}</strong>
             <span style="color:var(--text-label); font-size:10px;">${formatDisplayDate(t.date)}</span>
         </div>
-        <strong style="color:${amountColor}; white-space:nowrap; display:inline-flex; justify-content:flex-end; width:200px; flex-shrink:0;">₹${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+        <strong style="color:${amountColor}; white-space:nowrap; display:inline-flex; justify-content:flex-end; width:50px; flex-shrink:0;">₹${amountVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
     </div>
 `;
 
