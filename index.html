@@ -5683,31 +5683,39 @@ async function autoRestoreDataOnLoad() {
         }
     }
     }
-    document.getElementById('invoice_no').addEventListener('blur', async function() {
-    const invoiceNo = this.value.trim();
-    if (!invoiceNo) return;
-
-    showToast(`🔍 Searching invoice ${invoiceNo}...`);
-    try {
-        const response = await fetch(`${SCRIPT_URL}?action=getInvoiceTotal&invoiceNo=${encodeURIComponent(invoiceNo)}`);
-        const result = await response.json();
-
-        if (result.total !== undefined && result.total > 0) {
-            const firstAmtInput = document.querySelector('#paymentContainer .row-amt');
-            if (firstAmtInput) {
-                firstAmtInput.value = result.total.toFixed(2);
-                firstAmtInput.dispatchEvent(new Event('input', { bubbles: true }));
-                showToast(`✔ Invoice amount loaded: ₹${result.total.toFixed(2)}`);
-            }
-        } else {
-            showToast("⚠️ No matching invoice found or total is zero", "#f59e0b");
+    document.getElementById('invoice_no').addEventListener('blur', function() {
+    // Add a slight delay to allow the suggestion box's mousedown event to fire first
+    setTimeout(() => {
+        // 1. Hide the suggestion box
+        const invoiceSuggestBox = document.getElementById('invoice-suggestions');
+        if (invoiceSuggestBox) {
+            invoiceSuggestBox.classList.add('hidden');
         }
-    } catch (err) {
-        console.error("Invoice fetch error:", err);
-        showToast("Failed to fetch invoice amount", "var(--danger)");
-    }
-});
+        
+        // 2. Check if manually typed (fallback for users who type instead of clicking)
+        const invoiceNo = this.value.trim();
+        if (!invoiceNo) return;
 
+        // Check our existing local cache instead of making a slow API fetch
+        const matchedInvoice = cachedInvoicesForDate.find(
+            inv => String(inv.invoiceNo).toLowerCase() === invoiceNo.toLowerCase()
+        );
+
+        const firstAmtInput = document.querySelector('#paymentContainer .row-amt');
+        
+        // If they manually typed a valid invoice and the amount is empty, auto-fill it
+        if (matchedInvoice && firstAmtInput && (!firstAmtInput.value || parseFloat(firstAmtInput.value) === 0)) {
+             if (matchedInvoice.onlySelf) {
+                 setMode('split', false);
+                 firstAmtInput.value = matchedInvoice.totalAmount.toFixed(2);
+                 firstAmtInput.dispatchEvent(new Event('input', { bubbles: true }));
+                 showToast(`✔ Invoice loaded: ₹${matchedInvoice.totalAmount.toFixed(2)}`);
+             } else {
+                 showToast("💸 Split invoice detected. Please select it from the dropdown to auto-fill.", "#3b82f6");
+             }
+        }
+    }, 150);
+});
         function openBalanceModal() {
                     // Close the navigation menu dropdown if it's open
                     document.getElementById('navFab').classList.remove('active');
@@ -5797,7 +5805,9 @@ invoiceInp.addEventListener('input', function() {
 
 function showInvoiceSuggestions(filterText) {
     invoiceSuggestBox.innerHTML = '';
-    const matches = cachedInvoicesForDate.filter(inv => inv.invoiceNo.toLowerCase().includes(filterText));
+    const matches = cachedInvoicesForDate.filter(inv => 
+        String(inv.invoiceNo).toLowerCase().includes(filterText)
+    );
 
     if (matches.length === 0) {
         invoiceSuggestBox.classList.add('hidden');
@@ -5810,9 +5820,47 @@ function showInvoiceSuggestions(filterText) {
         const badge = item.onlySelf ? '👤 Self' : '💸 Split';
         div.innerHTML = `🧾 <strong>${item.invoiceNo}</strong> [${badge}] — <span style="color:var(--primary);">₹${item.totalAmount.toFixed(2)}</span>`;
         
-        div.onclick = function() {
+        div.onmousedown = function(e) {
+            e.preventDefault(); // CRITICAL: Prevents the input's blur event from firing prematurely
             invoiceInp.value = item.invoiceNo;
             invoiceSuggestBox.classList.add('hidden');
+
+            // --- NEW: DETERMINE & SET "SPENT FOR" ---
+            const spentForSelect = document.getElementById('spent_for');
+            const spentForOther = document.getElementById('spent_for_other');
+            let spentForVal = 'Self'; 
+
+            if (!item.onlySelf && item.breakdown) {
+                const breakdownKeys = Object.keys(item.breakdown);
+                if (breakdownKeys.length > 1) {
+                    spentForVal = 'Split'; // Multiple people involved
+                } else if (breakdownKeys.length === 1) {
+                    // Exactly one person involved, but it's not "Self" (e.g., "Mother", "House")
+                    spentForVal = breakdownKeys[0];
+                }
+            }
+
+            // Cleanly apply the value to the Select or "Other" text box
+            const optionExists = Array.from(spentForSelect.options).some(o => o.value.toLowerCase() === spentForVal.toLowerCase());
+            if (optionExists) {
+                const match = Array.from(spentForSelect.options).find(o => o.value.toLowerCase() === spentForVal.toLowerCase());
+                spentForSelect.value = match.value;
+                spentForOther.value = "";
+                spentForOther.classList.add('hidden');
+                spentForOther.disabled = true;
+            } else {
+                spentForSelect.value = "Other";
+                spentForOther.value = spentForVal;
+                spentForOther.disabled = false;
+                spentForOther.classList.remove('hidden');
+            }
+            document.getElementById('spentSmartRow').classList.toggle('has-other', spentForSelect.value === 'Other');
+            
+            // Pre-configure the UI for split/non-split based on the dropdown change
+            if (typeof window.updateSplitFromSpentFor === 'function') {
+                window.updateSplitFromSpentFor();
+            }
+            // ----------------------------------------
 
             if (item.onlySelf) {
                 // If only self, disable split mode and fill amount directly
@@ -5872,7 +5920,6 @@ function showInvoiceSuggestions(filterText) {
         invoiceSuggestBox.appendChild(div);
     });
 }
-
         let globalBorrowersData = [];
         let globalLoanTxns = [];
         let borrowerDatePickerInstance = null;
@@ -5956,6 +6003,7 @@ window.addEventListener('load', () => {
     const todayStr = getTodayIST();
     fetchLogsForDateRange(todayStr, todayStr);
     fetchBorrowerData();
+    fetchInvoicesForSelectedDate();
 };
 
     </script>
