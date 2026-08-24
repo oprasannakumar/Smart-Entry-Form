@@ -921,10 +921,16 @@
                 </select>
                 <div class="err-msg">Flow required</div>
             </div>
-            <div id="invoiceContainer" style="display:flex;flex-direction:column;position:relative;">
+<div id="invoiceContainer" style="display:flex;flex-direction:column;position:relative;">
     <label style="margin-top:0;">Invoice No. (Opt)</label>
-    <input type="text" id="invoice_no" placeholder="Enter Invoice Number" autocomplete="off">
-    <div id="invoice-suggestions" class="autocomplete-items hidden"></div>
+    <!-- Custom Theme Dropdown Trigger Element -->
+    <div id="customInvoiceSelect" class="static-label-box" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <span id="selectedInvoiceText" style="color:var(--text-label);">No invoice available</span>
+        <span style="font-size:10px; color:var(--text-label);">▼</span>
+    </div>
+    <!-- Hidden input to preserve form submission values if needed -->
+    <input type="hidden" id="invoice_no" value="">
+    <div id="invoice-suggestions" class="autocomplete-items hidden" style="position:absolute; top:100%; left:0; right:0; z-index:1000; margin-top:4px;"></div>
 </div>
 
         </div>
@@ -1714,30 +1720,36 @@ function handleBikeTaxiTripIncrement() {
         window.addEventListener('offline', checkStatus);
 
         // --- DYNAMIC LOGS & DASHBOARD FETCHING ---
-        document.getElementById('date').addEventListener('change', (e) => {
-            const selectedDate = e.target.value;
-            let data = JSON.parse(localStorage.getItem('daily_txns') || '{"date":"","txns":[]}');
-            if (data.date !== selectedDate) {
-                localStorage.setItem('daily_txns', JSON.stringify({ date: selectedDate, txns: [] }));
-                renderSessionDashboard();
-            }
-        });
+        
 // --- Initialize Flatpickr for the Main Form Date ---
         // Set the initial value directly on the input element first so it renders instantly
         const initialDate = getTodayIST();
         const dateInputNode = document.getElementById('date');
         dateInputNode.value = initialDate;
 
-        let mainDatePicker = flatpickr("#date", {
-            dateFormat: "Y-m-d",
-            altInput: true,
-            altFormat: "j-M-Y",
-            disableMobile: true,
-            defaultDate: initialDate,
-            onChange: function(selectedDates, dateStr, instance) {
-                document.getElementById('date').dispatchEvent(new Event('change'));
-            }
-        });
+let mainDatePicker = flatpickr("#date", {
+    dateFormat: "Y-m-d",
+    altInput: true,
+    altFormat: "j-M-Y",
+    disableMobile: true,
+    defaultDate: initialDate,
+    onChange: function(selectedDates, dateStr, instance) {
+        // 1. Reset the invoice selection when the date changes
+        document.getElementById('invoice_no').value = "";
+        const selectedTextEl = document.getElementById('selectedInvoiceText');
+        if (selectedTextEl) {
+            selectedTextEl.textContent = "Loading invoices...";
+            selectedTextEl.style.color = "var(--text-label)";
+        }
+
+        // 2. Fetch fresh invoices for the newly selected date
+        fetchInvoicesForSelectedDate();
+        
+        // 3. Trigger standard change event just in case other listeners rely on it
+        document.getElementById('date').dispatchEvent(new Event('change'));
+    }
+});
+
 
         // OPTIMIZED MAGIC TRICK: Only sync Flatpickr if the change came from your code,
         // preventing the laggy infinite feedback loop!
@@ -5777,58 +5789,72 @@ async function autoRestoreDataOnLoad() {
 
 let cachedInvoicesForDate = [];
 
-// Fetch invoices when date changes
 async function fetchInvoicesForSelectedDate() {
     const selectedDate = document.getElementById('date').value;
+    const selectedTextEl = document.getElementById('selectedInvoiceText');
+    const invoiceInput = document.getElementById('invoice_no');
     if (!selectedDate) return;
 
     try {
         const res = await fetch(`${SCRIPT_URL}?action=getInvoicesByDate&date=${selectedDate}`);
         cachedInvoicesForDate = await res.json();
+        
+        invoiceInput.value = "";
+        if (!cachedInvoicesForDate || cachedInvoicesForDate.length === 0) {
+            selectedTextEl.textContent = "No invoice available";
+            selectedTextEl.style.color = "var(--text-label)";
+        } else {
+            selectedTextEl.textContent = "Select invoice";
+            selectedTextEl.style.color = "var(--text-label)";
+        }
     } catch (e) {
         cachedInvoicesForDate = [];
+        selectedTextEl.textContent = "No invoice available";
+        selectedTextEl.style.color = "var(--text-label)";
     }
 }
 
-
-// Bind to date change event
-document.getElementById('date').addEventListener('change', fetchInvoicesForSelectedDate);
-
-// Invoice Autocomplete Interaction
-const invoiceInp = document.getElementById('invoice_no');
+// Toggle custom dropdown visibility on click
+const customSelectTrigger = document.getElementById('customInvoiceSelect');
 const invoiceSuggestBox = document.getElementById('invoice-suggestions');
 
-invoiceInp.addEventListener('focus', () => {
-    if (cachedInvoicesForDate.length > 0) showInvoiceSuggestions('');
-});
-
-invoiceInp.addEventListener('input', function() {
-    showInvoiceSuggestions(this.value.trim().toLowerCase());
-});
-
-function showInvoiceSuggestions(filterText) {
-    invoiceSuggestBox.innerHTML = '';
-    const matches = cachedInvoicesForDate.filter(inv => 
-        String(inv.invoiceNo).toLowerCase().includes(filterText)
-    );
-
-    if (matches.length === 0) {
+customSelectTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (invoiceSuggestBox.classList.contains('hidden')) {
+        showInvoiceDropdownList();
+    } else {
         invoiceSuggestBox.classList.add('hidden');
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!document.getElementById('invoiceContainer').contains(e.target)) {
+        invoiceSuggestBox.classList.add('hidden');
+    }
+});
+
+function showInvoiceDropdownList() {
+    invoiceSuggestBox.innerHTML = '';
+    invoiceSuggestBox.classList.remove('hidden');
+
+    if (!cachedInvoicesForDate || cachedInvoicesForDate.length === 0) {
+        invoiceSuggestBox.innerHTML = `<div style="color: var(--text-label); text-align: center; cursor: default; padding: 10px;">No invoice available</div>`;
         return;
     }
 
-    invoiceSuggestBox.classList.remove('hidden');
-    matches.forEach(item => {
+    cachedInvoicesForDate.forEach(item => {
         const div = document.createElement('div');
         const badge = item.onlySelf ? '👤 Self' : '💸 Split';
         div.innerHTML = `🧾 <strong>${item.invoiceNo}</strong> [${badge}] — <span style="color:var(--primary);">₹${item.totalAmount.toFixed(2)}</span>`;
         
         div.onmousedown = function(e) {
-            e.preventDefault(); // CRITICAL: Prevents the input's blur event from firing prematurely
-            invoiceInp.value = item.invoiceNo;
+            e.preventDefault(); 
+            document.getElementById('invoice_no').value = item.invoiceNo;
+            document.getElementById('selectedInvoiceText').textContent = item.invoiceNo;
+            document.getElementById('selectedInvoiceText').style.color = "var(--text-main)";
             invoiceSuggestBox.classList.add('hidden');
 
-            // --- NEW: DETERMINE & SET "SPENT FOR" ---
             const spentForSelect = document.getElementById('spent_for');
             const spentForOther = document.getElementById('spent_for_other');
             let spentForVal = 'Self'; 
@@ -5836,14 +5862,12 @@ function showInvoiceSuggestions(filterText) {
             if (!item.onlySelf && item.breakdown) {
                 const breakdownKeys = Object.keys(item.breakdown);
                 if (breakdownKeys.length > 1) {
-                    spentForVal = 'Split'; // Multiple people involved
+                    spentForVal = 'Split';
                 } else if (breakdownKeys.length === 1) {
-                    // Exactly one person involved, but it's not "Self" (e.g., "Mother", "House")
                     spentForVal = breakdownKeys[0];
                 }
             }
 
-            // Cleanly apply the value to the Select or "Other" text box
             const optionExists = Array.from(spentForSelect.options).some(o => o.value.toLowerCase() === spentForVal.toLowerCase());
             if (optionExists) {
                 const match = Array.from(spentForSelect.options).find(o => o.value.toLowerCase() === spentForVal.toLowerCase());
@@ -5859,14 +5883,11 @@ function showInvoiceSuggestions(filterText) {
             }
             document.getElementById('spentSmartRow').classList.toggle('has-other', spentForSelect.value === 'Other');
             
-            // Pre-configure the UI for split/non-split based on the dropdown change
             if (typeof window.updateSplitFromSpentFor === 'function') {
                 window.updateSplitFromSpentFor();
             }
-            // ----------------------------------------
 
             if (item.onlySelf) {
-                // If only self, disable split mode and fill amount directly
                 setMode('split', false);
                 const firstAmtInput = document.querySelector('#paymentContainer .row-amt');
                 if (firstAmtInput) {
@@ -5875,7 +5896,6 @@ function showInvoiceSuggestions(filterText) {
                 }
                 showToast(`✔ Invoice loaded: ₹${item.totalAmount.toFixed(2)}`);
             } else {
-                // If multiple recipients/mixed, enable split mode automatically
                 setMode('split', true);
 
                 if (typeof window.clearSplitPanel === 'function') {
@@ -5890,7 +5910,6 @@ function showInvoiceSuggestions(filterText) {
                     window.restorePersonalShare();
                 }
 
-                // Populate Personal Share and Recipients from breakdown
                 Object.entries(item.breakdown).forEach(([key, amt]) => {
                     if (key.toLowerCase() === 'self') {
                         personalAmt += amt;
@@ -5906,7 +5925,6 @@ function showInvoiceSuggestions(filterText) {
                     psInput.value = personalAmt > 0 ? personalAmt.toFixed(2) : '0.00';
                 }
 
-                // Set total payment amount
                 const firstAmtInput = document.querySelector('#paymentContainer .row-amt');
                 if (firstAmtInput) {
                     firstAmtInput.value = item.totalAmount.toFixed(2);
@@ -5923,6 +5941,7 @@ function showInvoiceSuggestions(filterText) {
         invoiceSuggestBox.appendChild(div);
     });
 }
+
         let globalBorrowersData = [];
         let globalLoanTxns = [];
         let borrowerDatePickerInstance = null;
