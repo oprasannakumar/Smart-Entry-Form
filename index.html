@@ -2079,10 +2079,12 @@ input.flatpickr-input,
 
         </div>
 
-        <!-- ===== PURPOSE ===== -->
-        <div id="purposeGroup">
-            <label style="margin-top:12px;">🎯 Purpose</label>
-            <div id="purposeSmartRow" class="smart-row">
+<!-- ===== PURPOSE ===== -->
+<div id="purposeGroup">
+    <label style="margin-top:12px;">🎯 Purpose</label>
+    <div id="purposeSmartRow" class="smart-row">
+        <div style="display: flex; gap: 10px; align-items: stretch;">
+            <div style="flex: 1; min-width: 0;">
                 <select id="purpose" data-popup-label="Purpose" required onchange="toggleSmartOther(this, 'purpose_other', 'purposeSmartRow')">
                     <option value="">Select</option>
                     <option>BIKETAXI</option>
@@ -2105,15 +2107,20 @@ input.flatpickr-input,
                     <option>Water</option>
                     <option value="Other">Other</option>
                 </select>
-                <input id="purpose_other" class="hidden" placeholder="Specify Purpose" required disabled style="margin-top:0;">
-                <div class="err-msg">Category required</div>
             </div>
+            <!-- The text input now shares the flex row and takes equal space when unhidden -->
+            <input id="purpose_other" class="hidden" placeholder="Specify Purpose" required disabled style="flex: 1; min-width: 0; margin-top: 0;">
         </div>
+        <div class="err-msg">Category required</div>
+    </div>
+</div>
 
-        <!-- ===== SPENT FOR ===== -->
-        <div id="spentForGroup">
-            <label style="margin-top:12px;">👤 Spent For</label>
-            <div id="spentSmartRow" class="smart-row">
+<!-- ===== SPENT FOR ===== -->
+<div id="spentForGroup">
+    <label style="margin-top:12px;">👤 Spent For</label>
+    <div id="spentSmartRow" class="smart-row">
+        <div style="display: flex; gap: 10px; align-items: stretch;">
+            <div style="flex: 1; min-width: 0;">
                 <select id="spent_for" data-popup-label="Spent For" required onchange="toggleSmartOther(this, 'spent_for_other', 'spentSmartRow')">
                     <option value="">Select</option>
                     <option>Self</option>
@@ -2127,10 +2134,13 @@ input.flatpickr-input,
                     <option>Split</option>
                     <option value="Other">Other</option>
                 </select>
-                <input id="spent_for_other" class="hidden" placeholder="Specify Name" required disabled style="margin-top:0;">
-                <div class="err-msg">Entity required</div>
             </div>
+            <!-- The text input now shares the flex row and takes equal space when unhidden -->
+            <input id="spent_for_other" class="hidden" placeholder="Specify Name" required disabled style="flex: 1; min-width: 0; margin-top: 0;">
         </div>
+        <div class="err-msg">Entity required</div>
+    </div>
+</div>
 
         <!-- ===== PAYMENT BREAKDOWN ===== -->
         <div id="standardPaymentHeader" class="header-row" style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;margin-bottom:6px;">
