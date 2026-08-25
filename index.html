@@ -3451,7 +3451,9 @@ input.flatpickr-input,
                         this._flatpickr.formatDate(this._flatpickr.selectedDates[0], "Y-m-d") :
                         "";
                     if (fpCurrentStr !== String(val)) {
-                        this._flatpickr.setDate(val, false);
+                        // Changed false to true so programmatic date changes (like Autofill) 
+                        // properly trigger the onChange event and fetch invoices
+                        this._flatpickr.setDate(val, true); 
                     }
                 }
             }
