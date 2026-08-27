@@ -1896,37 +1896,60 @@ input.flatpickr-input,
 #spentOtherWrapper.hidden {
     display: none !important;
 }
-/* ——— NEWS TICKER MARQUEE ——— */
-.marquee-wrapper {
-    overflow: hidden;
-    white-space: nowrap;
-    position: relative;
-    flex: 1;
-    /* Fades the left and right edges for a clean text appearance */
-    mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+
+          /* ——— DUE RECURRING ROUND FAB ——— */
+#dueRecurringFab {
+    position: fixed;
+    bottom: 30px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: var(--purple);
+    border: none;
+    border-radius: 50%;
     display: flex;
     align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(167, 139, 250, 0.4);
+    z-index: 9999;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
 }
-.marquee-content {
-    display: inline-block;
-    white-space: nowrap;
-    animation: scrollMarquee 15s linear infinite;
-    padding-left: 100%; /* Start completely off-screen right */
+#dueRecurringFab:hover {
+    transform: translateY(-4px) scale(1.05);
+    background: var(--primary);
+    box-shadow: 0 8px 24px rgba(255, 122, 92, 0.4);
 }
-.marquee-content:hover {
-    animation-play-state: paused;
+#dueRecurringFab:active {
+    transform: translateY(0) scale(0.95);
 }
-@keyframes scrollMarquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
+#dueRecurringFab.hidden {
+    display: none !important;
 }
-.ticker-item:hover {
-    transform: scale(1.05);
-    background: rgba(167, 139, 250, 0.1) !important;
+.fab-icon {
+    font-size: 22px;
+    line-height: 1;
 }
-.ticker-item:active {
-    transform: scale(0.95);
+.fab-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--coral);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid var(--bg-body);
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
 
     </style>
@@ -1953,9 +1976,6 @@ input.flatpickr-input,
             <span class="ball-spent" id="ballSpentVal">-₹0.00</span>
         </div>
     </div>
-
-    <div id="recurringPreview" style="max-width:420px;margin:0 auto 12px;font-size:12px;" class="hidden"></div>
-
     <form id="txnForm" novalidate>
         <!-- ===== HEADER ===== -->
         <div class="header-row-top">
@@ -2463,6 +2483,23 @@ input.flatpickr-input,
                     </thead>
                     <tbody id="templateBody"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+    <!-- ===== DUE RECURRING FAB & MODAL ===== -->
+    <button type="button" id="dueRecurringFab" class="hidden" title="Pending Recurring Transactions" onclick="document.getElementById('dueRecurringModal').classList.remove('hidden')">
+        <span class="fab-icon">⏳</span>
+        <span id="dueRecurringCount" class="fab-badge">0</span>
+    </button>
+
+    <div id="dueRecurringModal" class="modal hidden">
+        <div class="confirm-card" style="max-width:95%;width:380px;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+                <h3 style="margin:0;font-size:16px;color:var(--purple);">⏳ Due Today</h3>
+                <span style="cursor:pointer;font-size:18px;font-weight:700;" onclick="document.getElementById('dueRecurringModal').classList.add('hidden')">✕</span>
+            </div>
+            <div id="dueRecurringList" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:4px;">
+                <!-- Populated via JS -->
             </div>
         </div>
     </div>
@@ -6302,20 +6339,25 @@ input.flatpickr-input,
                 };
             };
         };
-
         function renderRecurringTemplates() {
             const list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
             const body = document.getElementById("recurringBody");
             body.innerHTML = "";
             list.forEach((t, index) => {
-                let account = "",
-                    amount = "";
-                if (t.payments && t.payments.length > 0) {
+                let account = "", amount = "";
+                
+                // Fix: Added Split Mode check so split amounts don't show up as blank
+                if (t.split_enabled) {
+                    account = "💸 Split";
+                    const total = (t.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                    amount = total.toString();
+                } else if (t.payments && t.payments.length > 0) {
                     const params = new URLSearchParams(t.payments[0]);
                     account = params.get("from_to") || "-";
-                    amount = params.get("withdrawn") && params.get("withdrawn") !== "0" ? params.get(
-                    "withdrawn") : params.get("deposit");
+                    // Fix: Safely verify that withdrawn is not the string "0" before using it
+                    amount = (params.get("withdrawn") && params.get("withdrawn") !== "0") ? params.get("withdrawn") : params.get("deposit");
                 }
+                
                 const formattedAmt = amount ?
                     `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` :
                     "-";
@@ -6324,7 +6366,114 @@ input.flatpickr-input,
             });
         }
 
-           function editRecurring(index) {
+        function renderUpcomingRecurring() {
+            const list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
+            const fab = document.getElementById("dueRecurringFab");
+            const countEl = document.getElementById("dueRecurringCount");
+            const modalList = document.getElementById("dueRecurringList");
+            
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0);
+            
+            const dueTemplates = list.map((t, index) => ({ ...t, originalIndex: index }))
+                .filter(t => {
+                    if (!t.active || !t.date) return false;
+                    const dueDate = new Date(t.date);
+                    dueDate.setHours(0, 0, 0, 0);
+                    return dueDate <= todayDate;
+                });
+                
+            if (dueTemplates.length === 0) { 
+                fab.classList.add("hidden"); 
+                return; 
+            }
+            
+            // Show the FAB and set the counter
+            fab.classList.remove("hidden");
+            countEl.textContent = dueTemplates.length;
+            
+            // Build the modal list
+            modalList.innerHTML = dueTemplates.map(t => {
+                let amt = "0.00", acc = "";
+                if (t.split_enabled) {
+                    const total = (t.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                    amt = total.toFixed(2);
+                    acc = "💸 Split";
+                } else if (t.payments && t.payments.length > 0) {
+                    const p = new URLSearchParams(t.payments[0]);
+                    amt = (p.get("withdrawn") && p.get("withdrawn") !== "0") ? p.get("withdrawn") : p.get("deposit");
+                    acc = p.get("from_to") || "Account";
+                }
+                const formattedAmt = Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                
+                return `
+              <div onclick="document.getElementById('dueRecurringModal').classList.add('hidden'); loadRecurring(${t.originalIndex});" 
+                   style="cursor:pointer;padding:12px;background:var(--bg-input);border-radius:var(--r);border:1.5px solid var(--border-color);transition:border-color 0.2s;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+                  <div style="font-weight:700;font-size:13px;color:var(--text-main);">${t.narration}</div>
+                  <div style="font-weight:800;font-size:14px;color:var(--primary);">₹${formattedAmt}</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-label);font-weight:600;">
+                  <span>📂 ${t.purpose || 'General'}</span>
+                  <span>💳 ${acc}</span>
+                </div>
+              </div>`;
+            }).join('');
+        }
+
+        function loadRecurring(index) {
+            const templates = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
+            const t = templates[index];
+            if (!t) return;
+            fullReset(true);
+            const today = new Date();
+            const scheduledDate = new Date(t.date);
+            document.getElementById("date").value = scheduledDate <= today ? t.date : getTodayIST();
+            document.getElementById("narration").value = t.narration;
+            setSelectOrOther(document.getElementById("purpose"), document.getElementById("purpose_other"),
+                'purposeSmartRow', t.purpose);
+            setSelectOrOther(document.getElementById("spent_for"), document.getElementById("spent_for_other"),
+                'spentSmartRow', t.spent_for);
+            document.getElementById("flow").value = t.flow;
+            if (t.split_enabled) {
+                setMode('split', true);
+                if (t.personal_share && t.personal_share > 0) {
+                    if (!document.getElementById('personalShareWrapper')) { window.restorePersonalShare(); }
+                    const ps = document.getElementById('personalShare');
+                    if (ps) ps.value = t.personal_share;
+                } else {
+                    const psWrapper = document.getElementById('personalShareWrapper');
+                    if (psWrapper) psWrapper.remove();
+                }
+                const container = document.getElementById('recipientsContainer');
+                container.innerHTML = '';
+                (t.recipients || []).forEach(r => window.addRecipientRow(r.name, r.amount));
+                document.getElementById('paymentContainer').innerHTML = "";
+                (t.payments || []).forEach(p => {
+                    createPaymentRow({ type: p.type, acc: p.account, amt: p.amount });
+                });
+            } else {
+                setMode('split', false);
+                document.getElementById('paymentContainer').innerHTML = "";
+                (t.payments || []).forEach(p => {
+                    const params = new URLSearchParams(p);
+                    // Fix: Extract amount perfectly without failing the "0" deposit trap
+                    const loadedAmt = (params.get("withdrawn") && params.get("withdrawn") !== "0") ? params.get("withdrawn") : params.get("deposit");
+                    createPaymentRow({ type: params.get("trtype"), acc: params.get("from_to"), amt: loadedAmt });
+                });
+            }
+            updateGrandTotal();
+            showToast("📥 Template Loaded");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => {
+                document.querySelectorAll('select:not(.popup-select-hidden):not(.no-popup)').forEach(sel => {
+                    if (sel._triggerElement) updateSelectTrigger(sel);
+                });
+            }, 60);
+        }
+
+
+         function editRecurring(index) {
             window.editRecurringIndex = index;
             const templates = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
             const t = templates[index];
@@ -6835,103 +6984,6 @@ input.flatpickr-input,
             renderUpcomingRecurring();
         }
 
-        function renderUpcomingRecurring() {
-            const list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
-            const preview = document.getElementById("recurringPreview");
-            const todayDate = new Date();
-            todayDate.setHours(0, 0, 0, 0);
-            const dueTemplates = list.map((t, index) => ({ ...t, originalIndex: index }))
-                .filter(t => {
-                    if (!t.active || !t.date) return false;
-                    const dueDate = new Date(t.date);
-                    dueDate.setHours(0, 0, 0, 0);
-                    return dueDate <= todayDate;
-                });
-            if (dueTemplates.length === 0) { preview.classList.add("hidden"); return; }
-            preview.classList.remove("hidden");
-            let html =
-                `<div style="font-weight:700;margin-bottom:8px;color:var(--secondary);font-size:13px;display:flex;align-items:center;justify-content:space-between;">
-                        <span>⏳ Due Today</span>
-                        <span style="cursor:pointer;color:var(--text-label);font-size:16px;line-height:1;padding:0 4px;" title="Dismiss" onclick="document.getElementById('recurringPreview').classList.add('hidden')">✕</span>
-                      </div>`;
-            dueTemplates.forEach(t => {
-                let amt = "0.00",
-                    acc = "";
-                if (t.split_enabled) {
-                    const total = t.payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                    amt = total.toFixed(2);
-                    acc = "💸 Split";
-                } else if (t.payments && t.payments.length > 0) {
-                    const p = new URLSearchParams(t.payments[0]);
-                    amt = p.get("withdrawn") !== "0" ? p.get("withdrawn") : p.get("deposit");
-                    acc = p.get("from_to");
-                }
-                const formattedAmt = Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2,
-                    maximumFractionDigits: 2 });
-                html += `
-              <div onclick="loadRecurring(${t.originalIndex})" style="cursor:pointer;padding:10px;margin-bottom:6px;background:var(--bg-card);border-radius:var(--r);border:1px solid var(--border-color);box-shadow:0 2px 5px rgba(0,0,0,0.03);transition:transform 0.1s active;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                  <div style="font-weight:600;font-size:13px;color:var(--text-main);">${t.narration}</div>
-                  <div style="font-weight:700;font-size:13px;color:var(--primary);">₹${formattedAmt}</div>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text-label);">
-                  <span>📂 ${t.purpose||'General'}</span>
-                  <span style="font-style:italic;">💳 ${acc}</span>
-                </div>
-              </div>`;
-            });
-            preview.innerHTML = html;
-        }
-
-        function loadRecurring(index) {
-            const templates = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
-            const t = templates[index];
-            if (!t) return;
-            fullReset(true);
-            const today = new Date();
-            const scheduledDate = new Date(t.date);
-            document.getElementById("date").value = scheduledDate <= today ? t.date : getTodayIST();
-            document.getElementById("narration").value = t.narration;
-            setSelectOrOther(document.getElementById("purpose"), document.getElementById("purpose_other"),
-                'purposeSmartRow', t.purpose);
-            setSelectOrOther(document.getElementById("spent_for"), document.getElementById("spent_for_other"),
-                'spentSmartRow', t.spent_for);
-            document.getElementById("flow").value = t.flow;
-            if (t.split_enabled) {
-                setMode('split', true);
-                if (t.personal_share && t.personal_share > 0) {
-                    if (!document.getElementById('personalShareWrapper')) { window.restorePersonalShare(); }
-                    const ps = document.getElementById('personalShare');
-                    if (ps) ps.value = t.personal_share;
-                } else {
-                    const psWrapper = document.getElementById('personalShareWrapper');
-                    if (psWrapper) psWrapper.remove();
-                }
-                const container = document.getElementById('recipientsContainer');
-                container.innerHTML = '';
-                t.recipients.forEach(r => window.addRecipientRow(r.name, r.amount));
-                document.getElementById('paymentContainer').innerHTML = "";
-                t.payments.forEach(p => {
-                    createPaymentRow({ type: p.type, acc: p.account, amt: p.amount });
-                });
-            } else {
-                setMode('split', false);
-                document.getElementById('paymentContainer').innerHTML = "";
-                t.payments.forEach(p => {
-                    const params = new URLSearchParams(p);
-                    createPaymentRow({ type: params.get("trtype"), acc: params.get("from_to"), amt: params.get(
-                            "withdrawn") || params.get("deposit") });
-                });
-            }
-            updateGrandTotal();
-            showToast("📥 Template Loaded");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => {
-                document.querySelectorAll('select:not(.popup-select-hidden):not(.no-popup)').forEach(sel => {
-                    if (sel._triggerElement) updateSelectTrigger(sel);
-                });
-            }, 60);
-        }
 
         async function deleteRecurring(index) {
             const ok = await showConfirm("Delete this recurring template?");
@@ -8533,7 +8585,7 @@ document.getElementById('spentContactBtn').addEventListener('click', async () =>
             autoRestoreDataOnLoad();
             renderUpcomingRecurring();
             fetchAccountBalances();
-            setTimeout(checkRecurringTemplates, 500);
+            
             const todayStr = getTodayIST();
             fetchLogsForDateRange(todayStr, todayStr);
             fetchBorrowerData();
