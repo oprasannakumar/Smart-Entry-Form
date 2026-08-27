@@ -1896,6 +1896,38 @@ input.flatpickr-input,
 #spentOtherWrapper.hidden {
     display: none !important;
 }
+/* ——— NEWS TICKER MARQUEE ——— */
+.marquee-wrapper {
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    flex: 1;
+    /* Fades the left and right edges for a clean text appearance */
+    mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+    display: flex;
+    align-items: center;
+}
+.marquee-content {
+    display: inline-block;
+    white-space: nowrap;
+    animation: scrollMarquee 15s linear infinite;
+    padding-left: 100%; /* Start completely off-screen right */
+}
+.marquee-content:hover {
+    animation-play-state: paused;
+}
+@keyframes scrollMarquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+.ticker-item:hover {
+    transform: scale(1.05);
+    background: rgba(167, 139, 250, 0.1) !important;
+}
+.ticker-item:active {
+    transform: scale(0.95);
+}
 
     </style>
 </head>
@@ -4997,19 +5029,18 @@ input.flatpickr-input,
             };
         }
 
-        document.getElementById('txnForm').onsubmit = function(e) {
+                document.getElementById('txnForm').onsubmit = function(e) {
             e.preventDefault();
             const form = e.target;
             const isOnline = navigator.onLine;
             const isBatch = batchMode;
             const isRecurring = recurringMode;
+            
             if (selfTransferMode) {
                 let totalOut = 0,
                     totalIn = 0;
-                document.querySelectorAll('#stSourcesContainer .row-amt').forEach(i => totalOut += window.evalMath(i
-                    .value) || 0);
-                document.querySelectorAll('#stDestContainer .row-amt').forEach(i => totalIn += window.evalMath(i
-                    .value) || 0);
+                document.querySelectorAll('#stSourcesContainer .row-amt').forEach(i => totalOut += window.evalMath(i.value) || 0);
+                document.querySelectorAll('#stDestContainer .row-amt').forEach(i => totalIn += window.evalMath(i.value) || 0);
                 if (totalOut <= 0 || totalIn <= 0) {
                     showToast("Transfer amounts must be greater than zero", "var(--danger)");
                     return;
@@ -5021,8 +5052,7 @@ input.flatpickr-input,
             } else {
                 form.classList.add('was-validated');
                 let hasMissingAmount = false;
-                document.querySelectorAll('#paymentContainer .row-amt').forEach(amt => { if (!window.evalMath(amt
-                        .value)) hasMissingAmount = true; });
+                document.querySelectorAll('#paymentContainer .row-amt').forEach(amt => { if (!window.evalMath(amt.value)) hasMissingAmount = true; });
                 if (hasMissingAmount) { showToast("Check payment amounts", "var(--danger)"); return; }
                 if (!isRecurring && !form.checkValidity()) return;
                 const gTotalStr = document.getElementById('grandTotal').textContent;
@@ -5033,15 +5063,71 @@ input.flatpickr-input,
                     if (splitData) {
                         const sumSplit = splitData.personal + splitData.recipients.reduce((s, r) => s + r.amount, 0);
                         if (Math.abs(gTotalVal - sumSplit) > 0.005) {
-                            showToast(
-                                `Split sum (₹${sumSplit.toFixed(2)}) must equal Total Amount (₹${gTotalVal.toFixed(2)})`,
-                                "var(--danger)");
+                            showToast(`Split sum (₹${sumSplit.toFixed(2)}) must equal Total Amount (₹${gTotalVal.toFixed(2)})`, "var(--danger)");
                             return;
                         }
                     }
                 }
             }
+
             const newFormState = buildFormState();
+
+            // ==========================================
+            // FIX: INTERCEPT RECURRING SAVES HERE
+            // ==========================================
+            if (isRecurring) {
+                const freq = document.getElementById("recurringType").value;
+                const cDays = document.getElementById("customDays").value;
+
+                // Match existing format logic for loadRecurring compatibility
+                const recurringPayments = newFormState.split_enabled ? 
+                    newFormState.payments : 
+                    newFormState.payments.map(p => {
+                        const params = new URLSearchParams({
+                            trtype: p.type || 'Unknown',
+                            from_to: p.account || 'Unknown',
+                            withdrawn: newFormState.flow === 'withdraw' ? p.amount : 0,
+                            deposit: newFormState.flow === 'deposit' ? p.amount : 0
+                        });
+                        return params.toString();
+                    });
+
+                const recurringTemplate = {
+                    active: true,
+                    frequency: freq,
+                    customDays: cDays,
+                    date: newFormState.date,
+                    narration: newFormState.narration,
+                    purpose: newFormState.purpose,
+                    spent_for: newFormState.spent_for,
+                    flow: newFormState.flow,
+                    split_enabled: newFormState.split_enabled,
+                    personal_share: newFormState.personal_share,
+                    recipients: newFormState.recipients,
+                    payments: recurringPayments
+                };
+
+                let templates = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
+                
+                if (typeof window.editRecurringIndex !== 'undefined' && window.editRecurringIndex !== null) {
+                    templates[window.editRecurringIndex] = recurringTemplate;
+                    window.editRecurringIndex = null;
+                    showToast("⏳ Recurring template updated!");
+                } else {
+                    templates.push(recurringTemplate);
+                    showToast("⏳ Recurring template saved!");
+                }
+                
+                localStorage.setItem("recurringTemplates", JSON.stringify(templates));
+                if (typeof syncRecurringBackup === 'function') syncRecurringBackup();
+                if (typeof renderUpcomingRecurring === 'function') renderUpcomingRecurring();
+                if (typeof renderRecurringTemplates === 'function') renderRecurringTemplates();
+                
+                fullReset();
+                return; // Prevent it from dropping down and sending data to the backend!
+            }
+            // ==========================================
+
             if (editingLogId !== null) {
                 const oldTxn = window.editingOriginalTxn;
                 if (!oldTxn || !oldTxn.formState) {
@@ -5648,7 +5734,7 @@ input.flatpickr-input,
             updateModeButtons();
             if (!keepModes) {
                 editingLogId = null;
-                window.editingOriginalTxn = null;
+                window.editingOriginalTxn = null;window.editRecurringIndex = null;
             }
             document.getElementById('txnForm').classList.remove('was-validated');
             document.getElementById('purpose_other').classList.add('hidden');
@@ -6238,33 +6324,24 @@ input.flatpickr-input,
             });
         }
 
-        function editRecurring(index) {
+           function editRecurring(index) {
             window.editRecurringIndex = index;
             const templates = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
             const t = templates[index];
-            document.getElementById("date").value = t.date || getTodayIST();
-            document.getElementById("narration").value = t.narration;
-            setSelectOrOther(document.getElementById("purpose"), document.getElementById("purpose_other"),
-                'purposeSmartRow', t.purpose);
-            setSelectOrOther(document.getElementById("spent_for"), document.getElementById("spent_for_other"),
-                'spentSmartRow', t.spent_for);
-            document.getElementById("flow").value = t.flow;
+            
+            // This safely loads everything exactly how it's stored
+            loadRecurring(index); 
+            
+            // Apply the recurring modes on top
             setMode('recurring', true);
             document.getElementById("recurringType").value = t.frequency || "monthly";
-            if (t.frequency === "custom") { document.getElementById("customDays").classList.remove("hidden");
-                document.getElementById("customDays").value = t.customDays || ""; }
-            document.getElementById("paymentContainer").innerHTML = "";
-            t.payments.forEach(p => { const params = new URLSearchParams(p);
-                createPaymentRow({ type: params.get("trtype"), acc: params.get("from_to"), amt: params.get(
-                        "withdrawn") || params.get("deposit") }); });
-            updateGrandTotal();
+            if (t.frequency === "custom") { 
+                document.getElementById("customDays").classList.remove("hidden");
+                document.getElementById("customDays").value = t.customDays || ""; 
+            }
+            
             closeRecurringManager();
             showToast("✏️ Editing recurring template");
-            setTimeout(() => {
-                document.querySelectorAll('select:not(.popup-select-hidden):not(.no-popup)').forEach(sel => {
-                    if (sel._triggerElement) updateSelectTrigger(sel);
-                });
-            }, 60);
         }
 
         function toggleRecurring(index) {
