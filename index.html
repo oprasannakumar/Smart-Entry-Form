@@ -2061,16 +2061,22 @@ input.flatpickr-input,
             </div>
         </div>
 
-        <!-- ===== NARRATION ===== -->
 <!-- ===== NARRATION ===== -->
 <div style="margin-bottom:14px;">
     <label style="margin-top:0;">📝 Narration</label>
     <div style="display: flex; gap: 8px; align-items: stretch;">
         <div style="position:relative; flex: 1; min-width: 0;">
-            <input type="text" id="narration" required placeholder="Description or Template Name" autocomplete="off" style="margin-top: 0;">
+            <input type="text" id="narration" required placeholder="Type command & tap ✨" autocomplete="off" style="margin-top: 0;">
             <div class="err-msg">Description required</div>
             <div id="narration-suggestions" class="autocomplete-items hidden"></div>
         </div>
+        
+        <!-- NEW: Manual AI Trigger Button for Text -->
+        <button type="button" id="aiProcessBtn" title="Run AI Command" style="width: 44px; height: 44px; margin-top: 0; border-radius: var(--r); background: rgba(167, 139, 250, 0.15); border: 1.5px solid var(--purple); color: var(--text-main); font-size: 18px; cursor: pointer; flex-shrink: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
+            ✨
+        </button>
+        
+        <!-- Microphone Button -->
         <button type="button" id="micBtn" title="Tap to speak" style="width: 44px; height: 44px; margin-top: 0; border-radius: var(--r); background: var(--bg-input); border: 1.5px solid var(--border-color); color: var(--text-main); font-size: 18px; cursor: pointer; flex-shrink: 0; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">
             🎤
         </button>
@@ -5965,20 +5971,6 @@ input.flatpickr-input,
             return false;
         }
 
-        document.getElementById("narration").addEventListener("blur", async function() {
-    const val = this.value.trim();
-    
-    // 1. Try Custom Template first (your existing logic)
-    if (checkAutoTemplateFill()) return;
-    
-    // 2. Try AI parsing (if it fails or ignores the text, it returns false)
-    const aiSuccess = await processNarrationWithAI(val);
-    
-    // 3. Fallback to your basic keyword prediction if AI didn't process it
-    if (!aiSuccess) { 
-        autoPredictPurpose(); 
-    }
-});
         document.getElementById("narration").addEventListener("input", autoFillSalary);
 
         window.deleteQueue = async (idx) => {
@@ -7893,10 +7885,25 @@ function handleSplitPurposeUpdate() {
     setSelectOrOther(purposeSel, document.getElementById('purpose_other'), 'purposeSmartRow', targetPurpose);
 }
 
-      // ============================================================
-//  GEMINI AI NARRATION PARSER
+// ============================================================
+//  AI NARRATION PARSER (GROQ PRIMARY -> GEMINI FALLBACK)
 // ============================================================
 let isAiProcessing = false;
+
+// 1. LISTENER FOR THE ✨ BUTTON
+const aiBtn = document.getElementById('aiProcessBtn');
+if (aiBtn) {
+    aiBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const val = document.getElementById('narration').value.trim();
+        if (val) {
+            // Trigger the AI manually! (true forces it to bypass keyword checks)
+            await processNarrationWithAI(val, true); 
+        } else {
+            showToast("Please type something first!", "#F59E0B");
+        }
+    });
+}
 
 // Added isVoiceCommand parameter (defaults to false for typing)
 async function processNarrationWithAI(text, isVoiceCommand = false) {
@@ -7906,13 +7913,6 @@ async function processNarrationWithAI(text, isVoiceCommand = false) {
     const isCommandKeyword = /clear|reset|empty|turn|mode|self transfer|load|bill|deposit|withdraw|split/i.test(text);
     if (!isVoiceCommand && !isCommandKeyword && (!/\d/.test(text) || text.split(/\s+/).length < 3)) {
         return false;
-    }
-
-    let apiKey = localStorage.getItem('gemini_api_key');
-    if (!apiKey) {
-        apiKey = prompt("✨ Enter your Gemini API Key for Smart Entry parsing:\n(This will be saved securely in your browser)");
-        if (!apiKey) return false;
-        localStorage.setItem('gemini_api_key', apiKey.trim());
     }
 
     isAiProcessing = true;
@@ -7942,7 +7942,7 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
   "narration": "Short clean description of the transaction",
   "flow": "withdraw" or "deposit",
   "account": "Best match from lists: [${knownAccounts}] or 'Cash'",
-"payment_type": "STRICT RULE: If the account is a digital wallet (like Paytm, PhonePe Wallet, Amazon Pay, Mobikwik, Freecharge) OR if the word 'wallet' is used, payment_type MUST BE 'WALLET'. Otherwise use 'CREDIT', 'DEBIT', 'UPI', 'CASH', or 'NET'.",
+  "payment_type": "STRICT RULE: If the account is a digital wallet (like Paytm, PhonePe Wallet, Amazon Pay, Mobikwik, Freecharge) OR if the word 'wallet' is used, payment_type MUST BE 'WALLET'. Otherwise use 'CREDIT', 'DEBIT', 'UPI', 'CASH', or 'NET'.",
   "amount": 0.00, (Calculate total if notes like 1*200, 3*500 are mentioned. Here 200*1 + 500*3 = 1700),
   "purpose": "Food, Grocery, Travelling, Utility Bills, Entertainment, Medicines, House, Income, Shopping, Loan, or Other",
   "spent_for": "If a specific person's name is mentioned for a split/loan (e.g. 'Sai Karthik'), output 'Split'. Otherwise best match from [${knownSpentFor.join(', ')}].",
@@ -7954,66 +7954,77 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
     let rawText = "";
 
     try {
-        // --- PRIMARY ATTEMPT: GEMINI 3.6 FLASH ---
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        // ====================================================
+        // PRIMARY ATTEMPT: GROQ (openai/gpt-oss-120b)
+        // ====================================================
+        let groqKey = localStorage.getItem('groq_api_key');
+        if (!groqKey) {
+            groqKey = prompt("✨ Enter your Groq API Key for Smart Entry parsing:\n(Saved securely in your browser)");
+            if (!groqKey) throw new Error("No Groq API key provided.");
+            localStorage.setItem('groq_api_key', groqKey.trim());
+        }
+
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${groqKey}`,
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: promptText }] }],
-                generationConfig: { temperature: 0.1, response_mime_type: "application/json" }
+                model: "openai/gpt-oss-120b", 
+                messages: [
+                    { role: "system", content: "You are a JSON parser. You must return pure JSON following the exact structure requested, with no markdown formatting." },
+                    { role: "user", content: promptText }
+                ],
+                response_format: { type: "json_object" },
+                temperature: 0.1
             })
         });
 
-        if (!res.ok) {
-            if (res.status === 400 || res.status === 403) localStorage.removeItem('gemini_api_key');
-            throw new Error(`Gemini API Error: ${res.status}`);
+        if (!groqRes.ok) {
+            if (groqRes.status === 401 || groqRes.status === 403) localStorage.removeItem('groq_api_key');
+            throw new Error(`Groq API Error: ${groqRes.status}`);
         }
 
-        const data = await res.json();
-        rawText = data.candidates[0].content.parts[0].text;
+        const groqData = await groqRes.json();
+        rawText = groqData.choices[0].message.content;
 
-    } catch (geminiErr) {
-        console.warn("Gemini Failed, attempting Groq fallback...", geminiErr);
-        showToast("Gemini limit reached. Using Groq fallback...", "#F59E0B");
+    } catch (groqErr) {
+        console.warn("Groq Failed, attempting Gemini fallback...", groqErr);
+        showToast("Groq failed. Using Gemini fallback...", "#F59E0B");
 
         try {
-            // --- FALLBACK ATTEMPT: GROQ GPT-OSS-120B ---
-            let groqKey = localStorage.getItem('groq_api_key');
-            if (!groqKey) {
-                groqKey = prompt("Gemini failed. ✨ Enter your Groq API Key for fallback parsing:\n(Saved securely in your browser)");
-                if (!groqKey) throw new Error("No fallback API key provided.");
-                localStorage.setItem('groq_api_key', groqKey.trim());
+            // ====================================================
+            // FALLBACK ATTEMPT: GEMINI (gemini-3.6-flash)
+            // ====================================================
+            let geminiKey = localStorage.getItem('gemini_api_key');
+            if (!geminiKey) {
+                geminiKey = prompt("Groq failed. ✨ Enter your Gemini API Key for fallback parsing:\n(Saved securely in your browser)");
+                if (!geminiKey) throw new Error("No Gemini API key provided.");
+                localStorage.setItem('gemini_api_key', geminiKey.trim());
             }
 
-            const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${groqKey}`,
-                    "Content-Type": "application/json"
-                },
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: "openai/gpt-oss-120b", 
-                    messages: [
-                        { role: "system", content: "You are a JSON parser. You must return pure JSON following the exact structure requested, with no markdown formatting." },
-                        { role: "user", content: promptText }
-                    ],
-                    response_format: { type: "json_object" },
-                    temperature: 0.1
+                    contents: [{ parts: [{ text: promptText }] }],
+                    generationConfig: { temperature: 0.1, response_mime_type: "application/json" }
                 })
             });
 
-            if (!groqRes.ok) {
-                if (groqRes.status === 401 || groqRes.status === 403) localStorage.removeItem('groq_api_key');
-                throw new Error(`Groq API Error: ${groqRes.status}`);
+            if (!res.ok) {
+                if (res.status === 400 || res.status === 403) localStorage.removeItem('gemini_api_key');
+                throw new Error(`Gemini API Error: ${res.status}`);
             }
 
-            const groqData = await groqRes.json();
-            rawText = groqData.choices[0].message.content;
+            const data = await res.json();
+            rawText = data.candidates[0].content.parts[0].text;
 
         } catch (fallbackErr) {
             console.error("AI Parsing & Fallback Error:", fallbackErr);
             narrationInp.value = originalText;
-            showToast("Both Gemini & Groq Failed", "var(--danger)");
+            showToast("Both Groq & Gemini Failed", "var(--danger)");
             narrationInp.disabled = false;
             isAiProcessing = false;
             return false;
@@ -8115,6 +8126,7 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
                 if (accLow === "cash") fType = "Cash";
                 else if (creditCards.some(c => c.toLowerCase() === accLow)) fType = "Credit";
                 else if (walletPlatforms.some(r => r.toLowerCase() === accLow)) fType = "Wallets";
+                else if (rewardPlatforms && rewardPlatforms.some(r => r.toLowerCase() === accLow)) fType = "Rewards";
                 
                 typeSel.value = fType;
                 typeSel.dispatchEvent(new Event('change'));
@@ -8191,16 +8203,14 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
         // --- Handle Spent For & Custom Split Recipient ---
         if (result.is_loan_or_split) {
             setMode('split', true);
-          handleSplitPurposeUpdate();
+            if (typeof window.handleSplitPurposeUpdate === 'function') window.handleSplitPurposeUpdate();
+            
             const spentForSel = document.getElementById("spent_for");
             const spentForOther = document.getElementById("spent_for_other");
             
+            // FIX: Route through setSelectOrOther so the UI updates "Other" and shows the Contact button
             if (result.split_recipient_name) {
-                spentForSel.value = "Other";
-                spentForOther.value = result.split_recipient_name;
-                spentForOther.disabled = false;
-                spentForOther.classList.remove('hidden');
-                document.getElementById('spentSmartRow').classList.add('has-other');
+                setSelectOrOther(spentForSel, spentForOther, 'spentSmartRow', result.split_recipient_name);
             } else {
                 setSelectOrOther(spentForSel, spentForOther, 'spentSmartRow', result.spent_for || "Split");
             }
@@ -8219,6 +8229,7 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
             const accLower = finalAccount.toLowerCase();
             if (creditCards.some(c => c.toLowerCase() === accLower)) finalType = "CREDIT";
             else if (walletPlatforms.some(r => r.toLowerCase() === accLower)) finalType = "Wallets";
+            else if (rewardPlatforms && rewardPlatforms.some(r => r.toLowerCase() === accLower)) finalType = "REWARDS";
             else if (bankAccounts.some(b => b.toLowerCase() === accLower) && finalType !== "NET" && finalType !== "DEBIT") {
                 finalType = "UPI"; 
             }
@@ -8284,7 +8295,6 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
             setTimeout(() => {
                 updateGrandTotal();
                 if (result.is_loan_or_split && typeof window.calcSplitDifference === 'function') {
-                    // Automatically add or populate the recipient row with the extracted name and total amount
                     const recipientsContainer = document.getElementById('recipientsContainer');
                     if (recipientsContainer && result.split_recipient_name) {
                         recipientsContainer.innerHTML = '';
@@ -8312,6 +8322,8 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
         isAiProcessing = false;
     }
 }
+
+
 
 // ============================================================
 //  VOICE TO TEXT (SPEECH RECOGNITION)
