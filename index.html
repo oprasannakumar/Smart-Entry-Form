@@ -33,7 +33,7 @@
             --coral: #FF6B6B;
             --teal: #4ECDC4;
             --gold: #FFD93D;
-
+            --danger: #FF6B6B;
             --bg-body: #FFF8F0;
             --bg-card: #FFFFFF;
             --text-main: #2D2A3E;
@@ -65,6 +65,7 @@
             --secondary-light: #7ADED6;
             --accent: #FFD93D;
             --accent-light: #FFE880;
+            --danger: #FF6B6B;
         }
 
         /* ——— BASE ——— */
@@ -1951,6 +1952,25 @@ input.flatpickr-input,
     box-sizing: border-box;
     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
+/* --- Fix low-contrast unreadable text inside recurring and template modals --- */
+#recurringBody td, 
+#templateBody td {
+    font-size: 13px !important;
+    padding: 10px !important;
+    text-align: center !important;
+    color: var(--text-main) !important; /* Forces the text to match main high-contrast text color */
+}
+
+/* Ensure table container has clean spacing and scrolling if needed */
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+}
+.table-container table {
+    width: 100% !important;
+    min-width: 1100px !important;
+    table-layout: auto !important;
+}
 
     </style>
 </head>
@@ -2501,6 +2521,12 @@ input.flatpickr-input,
             <div id="dueRecurringList" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:4px;">
                 <!-- Populated via JS -->
             </div>
+          <div id="unpaidCardsSection" class="hidden" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+    <h3 style="margin:0 0 10px 0; font-size:14px; color:var(--coral);">💳 Unpaid Credit Card Bills</h3>
+    <div id="unpaidCardsList" style="display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow-y:auto; padding-right:4px;">
+        <!-- Populated dynamically via JS -->
+    </div>
+          </div>
         </div>
     </div>
 
@@ -8578,18 +8604,84 @@ document.getElementById('spentContactBtn').addEventListener('click', async () =>
     console.warn("Speech Recognition API is not supported in this browser.");
 }
 
-      
+let globalUnpaidCards = [];
+
+// Fetch data from your backend
+async function fetchUnpaidCards() {
+    try {
+        const res = await fetch(`${SCRIPT_URL}?action=getUnpaidCards`);
+        globalUnpaidCards = await res.json();
+        
+        // Re-render the recurring modal so it updates the total combined count
+        if (typeof renderUpcomingRecurring === 'function') {
+            renderUpcomingRecurring();
+        }
+    } catch (e) {
+        console.error("Failed to fetch unpaid credit cards", e);
+    }
+}
+
+// Intercept and extend your existing renderUpcomingRecurring function
+const originalRenderUpcomingRecurring = renderUpcomingRecurring;
+renderUpcomingRecurring = function() {
+    // 1. Run your existing logic for recurring bills first
+    originalRenderUpcomingRecurring();
+
+    // 2. Fetch the DOM elements
+    const fab = document.getElementById("dueRecurringFab");
+    const countEl = document.getElementById("dueRecurringCount");
+    const unpaidSection = document.getElementById("unpaidCardsSection");
+    const unpaidList = document.getElementById("unpaidCardsList");
+
+    if (!fab || !countEl || !unpaidSection || !unpaidList) return;
+
+    // 3. Calculate the combined total of due recurring items AND unpaid cards
+    let recurringCount = parseInt(countEl.textContent) || 0;
+    if (fab.classList.contains("hidden")) recurringCount = 0; 
+    
+    const unpaidCount = Array.isArray(globalUnpaidCards) ? globalUnpaidCards.length : 0;
+    const totalCount = recurringCount + unpaidCount;
+
+    // 4. Show/Hide the FAB and update the badge with the combined total
+    if (totalCount > 0) {
+        fab.classList.remove("hidden");
+        countEl.textContent = totalCount;
+    } else {
+        fab.classList.add("hidden");
+    }
+
+    // 5. Render the Unpaid Cards HTML
+    if (unpaidCount > 0) {
+        unpaidSection.classList.remove("hidden");
+        unpaidList.innerHTML = globalUnpaidCards.map(card => `
+            <div style="padding:12px; background:rgba(255,107,107,0.05); border-radius:var(--r); border:1.5px solid var(--coral); display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:13px; color:var(--text-main);">${card.cardName || ''}</strong>
+                    <strong style="font-size:14px; color:var(--coral);">₹${Number(card.dueAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-label); font-weight:600;">
+                    <span>⚠️ Due: ${card.dueDate || ''}</span>
+                    <span>Outst: ₹${Number(card.outstanding || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        unpaidSection.classList.add("hidden");
+        unpaidList.innerHTML = "";
+    }
+};
+ 
         window.onload = () => {
             fullReset();
             loadPurposeMemory();
             autoRestoreDataOnLoad();
             renderUpcomingRecurring();
             fetchAccountBalances();
-            
             const todayStr = getTodayIST();
             fetchLogsForDateRange(todayStr, todayStr);
             fetchBorrowerData();
             fetchInvoicesForSelectedDate();
+            fetchUnpaidCards();
             setTimeout(() => {
                 initDropdownPopups();
                 document.querySelectorAll('select:not(.popup-select-hidden):not(.no-popup)').forEach(sel => {
