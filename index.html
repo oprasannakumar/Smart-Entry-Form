@@ -7078,7 +7078,7 @@ input.flatpickr-input,
                 acc = row.querySelector('.row-acc');
             type.value = "NET";
             type.dispatchEvent(new Event('change'));
-            setTimeout(() => { acc.value = "HDFC New";
+            setTimeout(() => { acc.value = "HDFC New";acc.dispatchEvent(new Event('change'));
                 const amountField = row.querySelector('.row-amt'); if (amountField) { amountField.focus();
                     amountField.click(); } }, 120);
             showToast("💰 Salary template loaded");
