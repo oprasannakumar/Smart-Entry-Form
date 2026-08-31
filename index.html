@@ -8080,7 +8080,7 @@ async function processNarrationWithAI(text, isVoiceCommand = false) {
     const knownAccounts = [...bankAccounts, ...creditCards, ...walletPlatforms].join(', ');
     const knownSpentFor = ["Self", "House", "Mother", "Grand Father", "Chinnama", "Family", "Pedhamma", "Vasavi", "Split"];
 
-    // Prompt updated to capture custom person names for splits/loans
+    // Refined prompt to explicitly handle credit card bill payments as self-transfers
     const promptText = `
 You are the brain of a voice-controlled financial app. Parse this command: "${text}"
 
@@ -8088,13 +8088,13 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
 {
   "action": "reset_form" | "load_template" | "set_mode" | "self_transfer" | "log_transaction",
     * "reset_form": ONLY to clear the whole form.
-    * "self_transfer": Moving money between own accounts or cash deposited/withdrawn.
+    * "self_transfer": Moving money between own accounts, cash deposited/withdrawn, OR clearing a credit card bill.
     * "log_transaction": Standard expenses, incomes, or split bills.
   "template_name": "name of template if loading, else empty",
   "mode_target": "biketaxi|batch|recurring|split|selfTransfer if setting mode, else empty",
-  "source_account": "from account if self transfer",
-  "destination_account": "to account if self transfer",
-  "narration": "Short clean description of the transaction",
+  "source_account": "Account money is leaving from. (If paying a credit card bill, extract the bank account used here)",
+  "destination_account": "Account receiving money. (If paying a credit card bill, extract the credit card name here)",
+  "narration": "Short clean description of the transaction. If paying a credit card bill, strictly use 'Cleared card bill'.",
   "flow": "withdraw" or "deposit",
   "account": "Best match from lists: [${knownAccounts}] or 'Cash'",
   "payment_type": "STRICT RULE: If the account is a digital wallet (like Paytm, PhonePe Wallet, Amazon Pay, Mobikwik, Freecharge) OR if the word 'wallet' is used, payment_type MUST BE 'WALLET'. Otherwise use 'CREDIT', 'DEBIT', 'UPI', 'CASH', or 'NET'.",
@@ -8339,7 +8339,7 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
                 setTimeout(() => window.calcStTotals(), 150);
             }
             
-            showToast("🏦 Self Transfer Filled!");
+            showToast("🏦 Self Transfer / Bill Cleared Filled!");
             return true;
         }
 
@@ -8363,7 +8363,6 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
             const spentForSel = document.getElementById("spent_for");
             const spentForOther = document.getElementById("spent_for_other");
             
-            // FIX: Route through setSelectOrOther so the UI updates "Other" and shows the Contact button
             if (result.split_recipient_name) {
                 setSelectOrOther(spentForSel, spentForOther, 'spentSmartRow', result.split_recipient_name);
             } else {
@@ -8477,7 +8476,6 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
         isAiProcessing = false;
     }
 }
-
 
 
 // ============================================================
