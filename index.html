@@ -5456,6 +5456,8 @@ input.flatpickr-input,
                         fetchBorrowerData();
                     }
                     window.currentSaveStats = null;
+                  if (typeof handleBikeTaxiTripIncrement === 'function') handleBikeTaxiTripIncrement();
+                    if (typeof updateRecurringNextDate === 'function') updateRecurringNextDate();
                     if (typeof multiTxnQueue !== 'undefined' && multiTxnQueue.length > 0) {
                         multiTxnQueue.splice(multiTxnIndex, 1);
                         if (multiTxnQueue.length > 0) {
@@ -5468,8 +5470,6 @@ input.flatpickr-input,
                     } else {
                         fullReset(batchMode);
                     }
-                    if (typeof handleBikeTaxiTripIncrement === 'function') handleBikeTaxiTripIncrement();
-                    if (typeof updateRecurringNextDate === 'function') updateRecurringNextDate();
                     const currentDate = document.getElementById('date').value || getTodayIST();
                     if (typeof fetchLogsForDateRange === 'function') {
                         fetchLogsForDateRange(currentDate, currentDate).catch(e => console.error(
@@ -8080,7 +8080,7 @@ async function processNarrationWithAI(text, isVoiceCommand = false) {
     const knownAccounts = [...bankAccounts, ...creditCards, ...walletPlatforms].join(', ');
     const knownSpentFor = ["Self", "House", "Mother", "Grand Father", "Chinnama", "Family", "Pedhamma", "Vasavi", "Split"];
 
-    // Refined prompt to explicitly handle credit card bill payments as self-transfers
+    // Refined prompt to handle "includes_self_in_split" intelligence
     const promptText = `
 You are the brain of a voice-controlled financial app. Parse this command: "${text}"
 
@@ -8098,11 +8098,13 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
   "flow": "withdraw" or "deposit",
   "account": "Best match from lists: [${knownAccounts}] or 'Cash'",
   "payment_type": "STRICT RULE: If the account is a digital wallet (like Paytm, PhonePe Wallet, Amazon Pay, Mobikwik, Freecharge) OR if the word 'wallet' is used, payment_type MUST BE 'WALLET'. Otherwise use 'CREDIT', 'DEBIT', 'UPI', 'CASH', or 'NET'.",
-  "amount": 0.00, (Calculate total if notes like 1*200, 3*500 are mentioned. Here 200*1 + 500*3 = 1700),
+  "denominations": {"500": 2, "100": 1} (Extract count of notes if mentioned, e.g., '2 notes of 500', '500x2', '500*2'. Keys MUST be valid INR note values: 500, 200, 100, 50, 20, 10. Omit if no notes mentioned.),
+  "amount": 0.00, (Must be a number. If denominations are provided but no total is mentioned, mathematically calculate it: 500*2 + 100*1 = 1100),
   "purpose": "Food, Grocery, Travelling, Utility Bills, Entertainment, Medicines, House, Income, Shopping, Loan, or Other",
-  "spent_for": "If a specific person's name is mentioned for a split/loan (e.g. 'Sai Karthik'), output 'Split'. Otherwise best match from [${knownSpentFor.join(', ')}].",
-  "split_recipient_name": "If a specific person's name is involved in a split/loan (e.g. 'Sai Karthik'), extract their exact name here. Else empty string.",
-  "denominations": {"200": 1, "500": 3} (map note values to counts if mentioned, else omit),
+  "spent_for": "If multiple people are involved or it's a split equally, output 'Split'. If just one specific person for a loan/split, output their name. Otherwise best match from [${knownSpentFor.join(', ')}].",
+  "split_recipient_names": ["Name 1", "Name 2"] (Array of strings. Extract ALL other people involved. Do NOT include the user ('Self'). If none, empty array []),
+  "is_split_equally": boolean (true if text contains 'split equally', 'divided equally', or implies dividing the total evenly),
+  "includes_self_in_split": boolean (true if the user is ALSO paying a share, e.g., "Lunch split with John". false if the user is paying ENTIRELY for others, e.g., "Paid for Chinnama and Grandfather split equally"),
   "is_loan_or_split": boolean (true if text contains 'split', 'loan', 'due', 'given to [Name]', etc.)
 }`;
 
@@ -8192,6 +8194,7 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
         const result = JSON.parse(rawText);
 
         const action = (result.action || "").toLowerCase();
+        const hasDenoms = result.denominations && Object.keys(result.denominations).length > 0;
 
         // ============================================
         // COMMAND HANDLER 1: RESET FORM
@@ -8271,20 +8274,23 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
                 destRow.querySelector('.row-amt').value = "";
             }
 
-            const applySTAcc = (row, rawAcc) => {
+            const applySTAcc = (row, rawAcc, isSource) => {
                 if (!rawAcc) return;
                 const accSel = row.querySelector('.row-acc');
                 const typeSel = row.querySelector('.row-type');
                 
                 let fType = "UPI"; 
                 const accLow = rawAcc.toLowerCase();
-                if (accLow === "cash") fType = "Cash";
+                
+                if (accLow === "cash" || (hasDenoms && accLow.includes("cash"))) {
+                    fType = "Cash";
+                }
                 else if (creditCards.some(c => c.toLowerCase() === accLow)) fType = "Credit";
                 else if (walletPlatforms.some(r => r.toLowerCase() === accLow)) fType = "Wallets";
                 else if (rewardPlatforms && rewardPlatforms.some(r => r.toLowerCase() === accLow)) fType = "Rewards";
                 
                 typeSel.value = fType;
-                typeSel.dispatchEvent(new Event('change'));
+                typeSel.dispatchEvent(new Event('change')); 
                 
                 setTimeout(() => {
                     const match = Array.from(accSel.options).find(opt => opt.value.toLowerCase() === accLow);
@@ -8305,23 +8311,23 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
                 }, 50);
             };
 
-            applySTAcc(srcRow, result.source_account);
-            applySTAcc(destRow, result.destination_account);
+            applySTAcc(srcRow, result.source_account, true);
+            applySTAcc(destRow, result.destination_account, false);
             
-            if (result.denominations) {
+            if (hasDenoms) {
                 setTimeout(() => {
                     let totalFromDenoms = 0;
                     [srcRow, destRow].forEach(row => {
-                        const accVal = row.querySelector('.row-acc').value.toLowerCase();
-                        const otherVal = row.querySelector('.row-acc-other').value.toLowerCase();
+                        const typeVal = row.querySelector('.row-type').value.toLowerCase();
                         
-                        if (accVal === 'cash' || otherVal === 'cash') {
+                        if (typeVal === 'cash') {
                             const cashBlock = row.querySelector('.row-cash-wrapper');
                             if (cashBlock) {
                                 Object.entries(result.denominations).forEach(([val, count]) => {
                                     const denomInput = cashBlock.querySelector(`.row-denom-input[data-val="${val}"]`);
                                     if (denomInput) {
                                         denomInput.value = count;
+                                        denomInput.dispatchEvent(new Event('input')); 
                                         totalFromDenoms += (Number(val) * Number(count));
                                     }
                                 });
@@ -8332,11 +8338,12 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
                     if ((!result.amount || result.amount == 0) && totalFromDenoms > 0) {
                         srcRow.querySelector('.row-amt').value = totalFromDenoms;
                         destRow.querySelector('.row-amt').value = totalFromDenoms;
+                        srcRow.querySelector('.row-amt').dispatchEvent(new Event('input'));
                     }
-                    window.calcStTotals();
-                }, 100);
+                    if (typeof window.calcStTotals === 'function') window.calcStTotals();
+                }, 150); 
             } else {
-                setTimeout(() => window.calcStTotals(), 150);
+                setTimeout(() => { if (typeof window.calcStTotals === 'function') window.calcStTotals(); }, 150);
             }
             
             showToast("🏦 Self Transfer / Bill Cleared Filled!");
@@ -8355,18 +8362,20 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
 
         if (result.purpose) setSelectOrOther(document.getElementById("purpose"), document.getElementById("purpose_other"), 'purposeSmartRow', result.purpose);
         
-        // --- Handle Spent For & Custom Split Recipient ---
-        if (result.is_loan_or_split) {
+        // --- Handle Split Equivalency & Recipients ---
+        if (result.is_loan_or_split || result.is_split_equally) {
             setMode('split', true);
             if (typeof window.handleSplitPurposeUpdate === 'function') window.handleSplitPurposeUpdate();
             
             const spentForSel = document.getElementById("spent_for");
             const spentForOther = document.getElementById("spent_for_other");
             
-            if (result.split_recipient_name) {
-                setSelectOrOther(spentForSel, spentForOther, 'spentSmartRow', result.split_recipient_name);
+            if (result.split_recipient_names && result.split_recipient_names.length === 1 && !result.is_split_equally) {
+                // Just one person mentioned (e.g. loan to one person)
+                setSelectOrOther(spentForSel, spentForOther, 'spentSmartRow', result.split_recipient_names[0]);
             } else {
-                setSelectOrOther(spentForSel, spentForOther, 'spentSmartRow', result.spent_for || "Split");
+                // Multiple people or split equally
+                setSelectOrOther(spentForSel, spentForOther, 'spentSmartRow', "Split");
             }
 
             if (typeof window.updateSplitFromSpentFor === 'function') window.updateSplitFromSpentFor();
@@ -8377,7 +8386,12 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
         let finalAccount = result.account || "";
         let finalType = result.payment_type ? result.payment_type.toUpperCase() : null;
 
-        if (finalAccount.toLowerCase() === "cash") {
+        if (hasDenoms) {
+            finalType = "CASH";
+            if (!finalAccount || finalAccount.toLowerCase() !== "cash") {
+                finalAccount = "Cash"; 
+            }
+        } else if (finalAccount.toLowerCase() === "cash") {
             finalType = "CASH";
         } else if (finalAccount) {
             const accLower = finalAccount.toLowerCase();
@@ -8402,7 +8416,7 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
         const amtInp = row.querySelector('.row-amt');
 
         typeSel.value = finalType;
-        typeSel.dispatchEvent(new Event('change'));
+        typeSel.dispatchEvent(new Event('change')); 
 
         if (finalAccount) {
             setTimeout(() => {
@@ -8424,40 +8438,80 @@ Determine the user's INTENT and return EXACTLY this JSON structure. Do NOT wrap 
             }, 50); 
         }
 
-        let totalFromDenoms = 0;
-        if (finalType === "CASH" && result.denominations) {
+        if (finalType === "CASH" && hasDenoms) {
             setTimeout(() => {
                 const cashBlock = row.querySelector('.row-cash-wrapper');
+                let totalFromDenoms = 0;
+                
                 if (cashBlock) {
                     Object.entries(result.denominations).forEach(([val, count]) => {
                         const denomInput = cashBlock.querySelector(`.row-denom-input[data-val="${val}"]`);
                         if (denomInput) {
                             denomInput.value = count;
+                            denomInput.dispatchEvent(new Event('input')); 
                             totalFromDenoms += (Number(val) * Number(count));
                         }
                     });
+                    
                     if ((!result.amount || result.amount == 0) && totalFromDenoms > 0) {
                         amtInp.value = totalFromDenoms;
-                        updateGrandTotal();
+                        amtInp.dispatchEvent(new Event('input')); 
+                        if (typeof updateGrandTotal === 'function') updateGrandTotal();
                     }
                 }
-            }, 100);
+            }, 150); 
         }
 
-        if (result.amount) {
+        if (result.amount && (!hasDenoms || (hasDenoms && result.amount > 0))) {
             amtInp.value = result.amount;
             setTimeout(() => {
-                updateGrandTotal();
-                if (result.is_loan_or_split && typeof window.calcSplitDifference === 'function') {
+                amtInp.dispatchEvent(new Event('input')); 
+                if (typeof updateGrandTotal === 'function') updateGrandTotal();
+                
+                // === SPLIT DISTRIBUTION LOGIC ===
+                if ((result.is_loan_or_split || result.is_split_equally) && typeof window.calcSplitDifference === 'function') {
                     const recipientsContainer = document.getElementById('recipientsContainer');
-                    if (recipientsContainer && result.split_recipient_name) {
-                        recipientsContainer.innerHTML = '';
-                        if (typeof window.addRecipientRow === 'function') {
-                            window.addRecipientRow(result.split_recipient_name, result.amount);
-                        }
-                    }
                     const myShareInput = document.getElementById('personalShare');
-                    if (myShareInput) myShareInput.value = "0.00";
+
+                    if (recipientsContainer && result.split_recipient_names && result.split_recipient_names.length > 0) {
+                        recipientsContainer.innerHTML = '';
+                        
+                        if (result.is_split_equally) {
+                            // Check if the AI determined the user is part of the split
+                            const includeSelf = result.includes_self_in_split === true;
+                            
+                            // Calculate total people dynamically based on whether you are included
+                            const totalPeople = result.split_recipient_names.length + (includeSelf ? 1 : 0);
+                            
+                            // Prevent division by zero and format amount
+                            const splitAmount = totalPeople > 0 ? (result.amount / totalPeople).toFixed(2) : result.amount;
+                            
+                            // Assign personal share based on AI decision
+                            if (myShareInput) {
+                                myShareInput.value = includeSelf ? splitAmount : "0.00";
+                            }
+                            
+                            // Distribute to recipients
+                            result.split_recipient_names.forEach(name => {
+                                if (typeof window.addRecipientRow === 'function') {
+                                    window.addRecipientRow(name, splitAmount);
+                                }
+                            });
+                        } else {
+                            // If it's a split/loan but NOT equally divided
+                            if (myShareInput) myShareInput.value = "0.00";
+                            
+                            result.split_recipient_names.forEach(name => {
+                                if (typeof window.addRecipientRow === 'function') {
+                                    window.addRecipientRow(name, result.amount); 
+                                }
+                            });
+                        }
+                    } else {
+                        // Fallback: Marked as split but no names detected
+                        if (myShareInput) myShareInput.value = "0.00";
+                    }
+                    
                     window.calcSplitDifference();
                 }
             }, 150);
