@@ -514,13 +514,13 @@
             padding-bottom: 12px;
             position: relative;
         }
-        .payment-row {
+         .payment-row {
             display: grid;
-            grid-template-columns: 1fr 1.2fr 80px;
+            grid-template-columns: 100px 1fr 90px;
             gap: 6px;
             align-items: end;
         }
-.payment-row .popup-trigger-select,
+payment-row .popup-trigger-select,
 .payment-row input.row-amt {
     height: 44px !important;        /* Increased from 38px */
     min-height: 44px !important;
@@ -1433,10 +1433,10 @@
                 gap: 8px;
             }
             .payment-row {
-                grid-template-columns: 1fr 1fr 70px;
+                grid-template-columns: 110px minmax(0, 1fr) 75px;
                 gap: 4px;
             }
-            .payment-row .popup-trigger-select,
+.payment-row .popup-trigger-select,
             .payment-row input {
                 font-size: 11px;
                 padding: 0 6px;
@@ -2217,7 +2217,7 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
         <div id="invoiceManagerContainer" class="hidden" style="width: 100%; padding-top: 10px;">
             
             <!-- Row 1: Date & Invoice No -->
-            <div class="grid-2">
+            <div class="grid-2" style="grid-template-columns: 110px 1fr;">
                 <div style="display:flex;flex-direction:column;">
                     <label style="margin-top:0;">📅 Date</label>
                     <input type="text" id="invManagerDate" placeholder="Select Date" required data-no-popup="true">
@@ -2225,7 +2225,7 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
                 <div style="display:flex;flex-direction:column;">
                     <label style="margin-top:0;">🧾 Invoice No</label>
                     <div class="custom-select-wrapper">
-                        <input type="text" id="invManagerNoInput" placeholder="Auto / Type / Select" autocomplete="off" class="select-input">
+                        <input type="text" id="invManagerNoInput" placeholder="Type / Select" autocomplete="off" class="select-input">
                         <div class="custom-options-list" id="invManagerNoDropdown"></div>
                     </div>
                 </div>
@@ -2415,7 +2415,7 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
 </div>
 
         <!-- ===== FLOW & INVOICE ===== -->
-        <div class="grid-2" id="flowInvoiceRow">
+        <div class="grid-2" id="flowInvoiceRow" style="grid-template-columns: 115px 1fr;">
             <div id="flowContainer" style="display:flex;flex-direction:column;">
                 <label style="margin-top:0;">💧 Flow</label>
                 <select id="flow" data-popup-label="Flow" required>
@@ -9141,7 +9141,6 @@ function toggleInvoiceManager() {
 
             clearInvoiceSelection(true); // Soft reset to create mode initially
 
-            input.disabled = true;
             dropdown.innerHTML = "";
 
             const clone = input.cloneNode(true);
@@ -9151,7 +9150,6 @@ function toggleInvoiceManager() {
             fetch(`${SCRIPT_URL}?action=getInvoicesByDate&date=${dateStr}`)
                 .then(r => r.json())
                 .then(data => {
-                    newInput.disabled = false;
                     window.availableInvoicesForDate = data || [];
                     
                     const renderInvs = (filter) => {
