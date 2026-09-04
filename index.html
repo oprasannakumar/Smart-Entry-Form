@@ -14,7 +14,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
 
         /* ===================================================
-                   ILLUSTRATIVE THEME — Warm, Playful, Creative
+                   ILLUSTATIVE THEME — Warm, Playful, Creative
                    =================================================== */
         :root {
             --h: 44px;
@@ -219,13 +219,13 @@
         /* ——— HEADER ——— */
         .header-row-top {
             display: grid;
-            grid-template-columns: 40px 1fr 80px;
+            grid-template-columns: 65px 1fr 80px;
             align-items: center;
             margin-bottom: 16px;
             margin-top: -4px;
             position: relative;
         }
-        .header-row-top h3 {
+         .header-row-top h3 {
             margin: 0;
             font-weight: 700;
             font-size: 20px;
@@ -239,15 +239,20 @@
             background-clip: text;
             letter-spacing: -0.3px;
         }
-        #statusDot {
+      .left-controls {
             grid-column: 1;
             grid-row: 1;
             z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-self: start;
+        }
+#statusDot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
             background: #94a3b8;
-            justify-self: start;
             box-shadow: 0 0 0 2px var(--bg-card);
         }
         #statusDot.online {
@@ -257,8 +262,7 @@
         #statusDot.offline {
             background: var(--coral);
             box-shadow: 0 0 12px var(--coral);
-        }
-        .right-btns {
+        }        .right-btns {
             grid-column: 3;
             grid-row: 1;
             z-index: 2;
@@ -1493,7 +1497,28 @@
     pointer-events: auto !important;
     box-shadow: var(--shadow-float);
 }
-
+#invoiceSwapBtn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            padding: 0;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #invoiceSwapBtn:hover {
+            transform: scale(1.08) rotate(-8deg);
+            border-color: var(--primary);
+          }
         /* --- Invoice custom select --- */
         #customInvoiceSelect {
             cursor: pointer;
@@ -1971,6 +1996,173 @@ input.flatpickr-input,
     min-width: 1100px !important;
     table-layout: auto !important;
 }
+/* --- INVOICE MANAGER TOGGLE --- */
+form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):not(.modal) {
+    display: none !important;
+}
+        /* --- INVOICE MANAGER CUSTOM SELECTS --- */
+        .custom-select-wrapper { 
+            position: relative; 
+            width: 100%; 
+        }
+        .select-input {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+            padding-right: 40px;
+            text-align: left;
+        }
+        .select-input:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+        }
+        .custom-options-list {
+            position: absolute; 
+            top: 100%; 
+            left: 0; 
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-top: 6px; 
+            max-height: 220px; 
+            overflow-y: auto;
+            z-index: 10010; /* Ensures it floats above the input below */
+            box-shadow: var(--shadow-float);
+            display: none; 
+            flex-direction: column;
+        }
+        .custom-options-list.show { 
+            display: flex; 
+        }
+        .custom-option {
+            padding: 12px 14px; 
+            cursor: pointer; 
+            color: var(--text-main);
+            font-size: 13px; 
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left; 
+            transition: background 0.15s;
+        }
+        .custom-option:last-child { 
+            border-bottom: none; 
+        }
+        .custom-option:hover { 
+            background: rgba(255, 122, 92, 0.08); 
+            color: var(--primary); 
+        }
+        .empty-option { 
+            color: var(--text-label); 
+            font-style: italic; 
+            cursor: default; 
+        }
+        /* --- INVOICE MANAGER VIEWER & SWIPE STYLES --- */
+        .inv-recipient-group-card {
+            margin-top: 14px;
+            margin-bottom: 24px; /* INCREASED GAP TO BUTTON */
+            background: var(--bg-card); /* Outer background */
+            border-radius: var(--radius-xl); /* Perfect outer rounding */
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: visible !important; /* CRITICAL: Allows dropdowns to escape */
+            box-shadow: 0 8px 24px rgba(0,0,0,0.04); /* Soft depth */
+        }
+        .inv-swipe-bg-group {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--coral); color: white;
+            display: flex; align-items: center; justify-content: flex-end;
+            padding-right: 16px; font-size: 13px; font-weight: 700; z-index: 1;
+            border-radius: var(--radius-xl); /* Match outer container */
+        }
+        .inv-group-content {
+            background: var(--bg-card); /* Match outer background */
+            position: relative; z-index: 2;
+            transition: transform 0.2s ease;
+            touch-action: pan-y;
+            border-radius: var(--radius-xl); /* Match outer container */
+            box-shadow: 0 0 0 1px var(--border-color); /* Crisp edge protection */
+        }
+        .inv-recipient-header {
+            background: rgba(167, 139, 250, 0.08);
+            padding: 12px 16px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 700; font-size: 13px; color: var(--purple);
+            border-bottom: 1px dashed var(--purple-light);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        }
+        .inv-recipient-items-list {
+            padding: 14px; display: flex; flex-direction: column; gap: 12px;
+        }
+
+        /* --- INNER ITEM BLOCKS --- */
+        .inv-item-block {
+            background: var(--bg-input); /* CONTRAST COLOR inside the group */
+            border: 1px solid rgba(78, 205, 196, 0.4); /* Teal border to pop */
+            border-radius: var(--radius-lg); /* Slightly tighter inner rounding */
+            position: relative; 
+            overflow: visible !important; 
+        }
+        .inv-swipe-bg-item {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--coral); color: white;
+            display: flex; align-items: center; justify-content: flex-end;
+            padding-right: 16px; font-size: 12px; font-weight: 700; z-index: 1;
+            border-radius: var(--radius-lg);
+        }
+        .inv-item-content {
+            background: var(--bg-input); /* Match inner block color */
+            padding: 12px 14px; 
+            border-radius: var(--radius-lg);
+            position: relative; z-index: 2;
+            transition: transform 0.2s ease; touch-action: pan-y;
+        }
+        /* --- INVOICE CREATE MODE BUTTONS & SWIPE TWEAKS --- */
+        .add-recipient-btn {
+            width: 100%;
+            background: rgba(167, 139, 250, 0.12);
+            color: var(--purple);
+            border: 1.5px dashed rgba(167, 139, 250, 0.5);
+            border-radius: var(--radius-md);
+            height: 46px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        .add-recipient-btn:hover { background: rgba(167, 139, 250, 0.25); }
+
+        .add-item-btn {
+            width: 100%;
+            background: var(--bg-card);
+            color: var(--secondary);
+            border: 1.5px solid rgba(78, 205, 196, 0.4);
+            border-radius: 10px;
+            height: 40px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.15s;
+        }
+        .add-item-btn:hover { background: rgba(78, 205, 196, 0.15); }
+           
+        .modal .confirm-card {
+            margin: 0 !important;
+            position: relative !important;
+            transform: none !important; /* Removes lingering translate offsets */
+        }
+
+        /* --- FIX MODAL DROPDOWN OVERFLOW --- */
+        #invAddItemModal .confirm-card {
+            overflow: visible !important;
+        }
+        #invNewItemNameDropdown {
+            z-index: 100050 !important;
+        }
 
     </style>
 </head>
@@ -1999,7 +2191,10 @@ input.flatpickr-input,
     <form id="txnForm" novalidate>
         <!-- ===== HEADER ===== -->
         <div class="header-row-top">
-            <div id="statusDot" title="Network Status"></div>
+            <div class="left-controls">
+                <div id="statusDot" title="Network Status"></div>
+                <button type="button" id="invoiceSwapBtn" onclick="toggleInvoiceManager()" title="Switch to Invoice Manager">🧾</button>
+            </div>
             <h3>✨ Smart Entry</h3>
             <div class="right-btns">
                 <div class="nav-fab-container" id="navFab">
@@ -2013,6 +2208,67 @@ input.flatpickr-input,
                 </div>
                 <button type="button" id="themeToggle">🌙</button>
             </div>
+        </div>
+
+        <!-- ===== INVOICE MANAGER CONTAINER ===== -->
+        <div id="invoiceManagerContainer" class="hidden" style="width: 100%; padding-top: 10px;">
+            
+            <!-- Row 1: Date & Invoice No -->
+            <div class="grid-2">
+                <div style="display:flex;flex-direction:column;">
+                    <label style="margin-top:0;">📅 Date</label>
+                    <input type="text" id="invManagerDate" placeholder="Select Date" required data-no-popup="true">
+                </div>
+                <div style="display:flex;flex-direction:column;">
+                    <label style="margin-top:0;">🧾 Invoice No</label>
+                    <div class="custom-select-wrapper">
+                        <input type="text" id="invManagerNoInput" placeholder="Auto / Type / Select" autocomplete="off" class="select-input">
+                        <div class="custom-options-list" id="invManagerNoDropdown"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Dealer Name -->
+            <div style="display:flex;flex-direction:column;margin-bottom:14px;">
+                <label style="margin-top:0;">🏪 Dealer Name</label>
+                <div class="custom-select-wrapper">
+                    <input type="text" id="invManagerDealerInput" placeholder="Type dealer name" autocomplete="off" class="select-input">
+                    <div class="custom-options-list" id="invManagerDealerDropdown"></div>
+                </div>
+            </div>
+
+            <!-- ================= CREATE MODE ================= -->
+            <div id="invCreateModeContainer">
+                <div id="invRecipientsContainer" style="margin-top: 16px;"></div>
+                
+                <button type="button" id="invAddRecipientBtn" class="add-recipient-btn hidden" onclick="invAddRecipientGroup()">
+                    + Add Recipient Group
+                </button>
+
+                <div id="invCreateSummaryBox" class="total-wrapper" style="margin-top: 14px; background: linear-gradient(to right, rgba(78, 205, 196, 0.1), rgba(167, 139, 250, 0.1)); border: 1.5px dashed var(--purple);">
+                    <span style="font-size:13px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.5px;">✨ Grand Total:</span>
+                    <span id="invCreateGrandTotal" style="font-size:22px;font-weight:900;background: linear-gradient(135deg, var(--secondary), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0px 2px 2px rgba(167, 139, 250, 0.2));">₹0.00</span>
+                </div>
+
+                <button type="button" class="btn-confirm" style="width:100%; height:48px; margin-top:14px; border-radius:var(--r);" onclick="saveNewInvoice()">💾 Save & Generate Invoice</button>
+            </div>
+
+            <!-- ================= VIEW / EDIT MODE ================= -->
+            <div id="invViewModeContainer" class="hidden">
+                <div id="invViewerActions" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button type="button" class="btn-confirm" style="flex:1; height: 38px; font-size: 12px;" onclick="toggleInvAddItemModal()">➕ Add Item</button>
+                    <button type="button" class="btn-cancel" style="flex:1; height: 38px; font-size: 12px; border-color: var(--coral); color: var(--coral);" onclick="deleteEntireInv()">🗑 Delete Inv</button>
+                    <button type="button" class="btn-cancel" style="flex:0.6; height: 38px; font-size: 12px;" onclick="clearInvoiceSelection(false)">✖ Clear</button>
+                </div>
+
+                <div id="invGroupedItemsContainer" style="margin-bottom: 14px;"></div>
+
+                <div id="invViewerSummaryBox" class="total-wrapper" style="margin-top: 0; background: linear-gradient(to right, rgba(78, 205, 196, 0.1), rgba(167, 139, 250, 0.1)); border: 1.5px dashed var(--purple);">
+                    <span style="font-size:13px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.5px;">✨ Grand Total:</span>
+                    <span id="invViewerGrandTotal" style="font-size:22px;font-weight:900;background: linear-gradient(135deg, var(--secondary), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0px 2px 2px rgba(167, 139, 250, 0.2));">₹0.00</span>
+                </div>
+            </div>
+
         </div>
 
         <!-- ===== MODE TOGGLES ===== -->
@@ -2346,7 +2602,46 @@ input.flatpickr-input,
             <button type="button" id="btnViewQueue" style="height:42px;margin:0;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:none;background:#94a3b8;color:#fff;border-radius:var(--r);">📋 View Queue</button>
         </div>
     </form>
+        <!-- Add Item Modal -->
+        <div id="invAddItemModal" class="modal hidden">
+            <div class="confirm-card" style="max-width:95%;width:400px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+                    <h3 style="margin:0;font-size:16px;color:var(--secondary);">➕ Add New Item</h3>
+                    <span style="cursor:pointer;font-size:18px;font-weight:700;" onclick="toggleInvAddItemModal()">✕</span>
+                </div>
+                
+                <label style="margin-top:0;">Recipient</label>
+                <div class="custom-select-wrapper" style="margin-bottom:12px;">
+                    <input type="text" readonly id="invNewItemRecipient" class="select-input" value="Self">
+                    <div class="custom-options-list" id="invNewItemRecipientDropdown"></div>
+                </div>
 
+                <label style="margin-top:0;">Item Name</label>
+                <div class="custom-select-wrapper" style="margin-bottom:12px;">
+                    <input type="text" id="invNewItemName" placeholder="Enter item name" autocomplete="off" class="select-input" style="padding-right:14px; background-image:none;">
+                    <div class="custom-options-list" id="invNewItemNameDropdown"></div>
+                </div>
+                
+                <div class="grid-2" style="margin-bottom:12px;">
+                    <div>
+                        <label style="margin-top:0;">Quantity</label>
+                        <input type="number" id="invNewItemQty" placeholder="Qty" oninput="calcInvViewerModal('qty')">
+                    </div>
+                    <div>
+                        <label style="margin-top:0;">Price</label>
+                        <input type="number" id="invNewItemPrice" placeholder="Price" oninput="calcInvViewerModal('price')">
+                    </div>
+                </div>
+
+                <label style="margin-top:0;">Total</label>
+                <input type="number" id="invNewItemTotal" placeholder="Total" style="margin-bottom:16px;" oninput="calcInvViewerModal('total')">
+
+                <div class="btn-group">
+                    <button type="button" class="btn-confirm" onclick="confirmAddInvItem()">Save Item</button>
+                    <button type="button" class="btn-cancel" onclick="toggleInvAddItemModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
     <!-- ===== CONFIRM MODAL ===== -->
     <div id="confirmModal" class="modal hidden">
         <div class="confirm-card">
@@ -3543,6 +3838,14 @@ input.flatpickr-input,
         const initialDate = getTodayIST();
         const dateInputNode = document.getElementById('date');
         dateInputNode.value = initialDate;
+        // Initialize Invoice Manager Date Picker
+        let invManagerDatePicker = flatpickr("#invManagerDate", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "j-M-Y",
+            disableMobile: true,
+            defaultDate: getTodayIST()
+        });
 
         let mainDatePicker = flatpickr("#date", {
             dateFormat: "Y-m-d",
@@ -6397,7 +6700,11 @@ input.flatpickr-input,
             const fab = document.getElementById("dueRecurringFab");
             const countEl = document.getElementById("dueRecurringCount");
             const modalList = document.getElementById("dueRecurringList");
+            const unpaidSection = document.getElementById("unpaidCardsSection");
+            const unpaidList = document.getElementById("unpaidCardsList");
             
+            if (!fab || !countEl) return;
+
             const todayDate = new Date();
             todayDate.setHours(0, 0, 0, 0);
             
@@ -6409,42 +6716,69 @@ input.flatpickr-input,
                     return dueDate <= todayDate;
                 });
                 
-            if (dueTemplates.length === 0) { 
-                fab.classList.add("hidden"); 
-                return; 
+            // Render recurring items list
+            if (modalList) {
+                modalList.innerHTML = dueTemplates.map(t => {
+                    let amt = "0.00", acc = "";
+                    if (t.split_enabled) {
+                        const total = (t.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                        amt = total.toFixed(2);
+                        acc = "💸 Split";
+                    } else if (t.payments && t.payments.length > 0) {
+                        const p = new URLSearchParams(t.payments[0]);
+                        amt = (p.get("withdrawn") && p.get("withdrawn") !== "0") ? p.get("withdrawn") : p.get("deposit");
+                        acc = p.get("from_to") || "Account";
+                    }
+                    const formattedAmt = Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    
+                    return `
+                      <div onclick="document.getElementById('dueRecurringModal').classList.add('hidden'); loadRecurring(${t.originalIndex});" 
+                           style="cursor:pointer;padding:12px;background:var(--bg-input);border-radius:var(--r);border:1.5px solid var(--border-color);transition:border-color 0.2s;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+                          <div style="font-weight:700;font-size:13px;color:var(--text-main);">${t.narration}</div>
+                          <div style="font-weight:800;font-size:14px;color:var(--primary);">₹${formattedAmt}</div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-label);font-weight:600;">
+                          <span>📂 ${t.purpose || 'General'}</span>
+                          <span>💳 ${acc}</span>
+                        </div>
+                      </div>`;
+                }).join('');
             }
-            
-            // Show the FAB and set the counter
-            fab.classList.remove("hidden");
-            countEl.textContent = dueTemplates.length;
-            
-            // Build the modal list
-            modalList.innerHTML = dueTemplates.map(t => {
-                let amt = "0.00", acc = "";
-                if (t.split_enabled) {
-                    const total = (t.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                    amt = total.toFixed(2);
-                    acc = "💸 Split";
-                } else if (t.payments && t.payments.length > 0) {
-                    const p = new URLSearchParams(t.payments[0]);
-                    amt = (p.get("withdrawn") && p.get("withdrawn") !== "0") ? p.get("withdrawn") : p.get("deposit");
-                    acc = p.get("from_to") || "Account";
+
+            // Calculate combined count including unpaid cards
+            const recurringCount = dueTemplates.length;
+            const unpaidCount = Array.isArray(globalUnpaidCards) ? globalUnpaidCards.length : 0;
+            const totalCount = recurringCount + unpaidCount;
+
+            if (totalCount > 0) {
+                fab.classList.remove("hidden");
+                countEl.textContent = totalCount;
+            } else {
+                fab.classList.add("hidden");
+            }
+
+            // Render Unpaid Cards Section
+            if (unpaidSection && unpaidList) {
+                if (unpaidCount > 0) {
+                    unpaidSection.classList.remove("hidden");
+                    unpaidList.innerHTML = globalUnpaidCards.map(card => `
+                        <div style="padding:12px; background:rgba(255,107,107,0.05); border-radius:var(--r); border:1.5px solid var(--coral); display:flex; flex-direction:column; gap:6px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="font-size:13px; color:var(--text-main);">${card.cardName || ''}</strong>
+                                <strong style="font-size:14px; color:var(--coral);">₹${Number(card.dueAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-label); font-weight:600;">
+                                <span>⚠️ Due: ${card.dueDate || ''}</span>
+                                <span>Outst: ₹${Number(card.outstanding || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    unpaidSection.classList.add("hidden");
+                    unpaidList.innerHTML = "";
                 }
-                const formattedAmt = Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                
-                return `
-              <div onclick="document.getElementById('dueRecurringModal').classList.add('hidden'); loadRecurring(${t.originalIndex});" 
-                   style="cursor:pointer;padding:12px;background:var(--bg-input);border-radius:var(--r);border:1.5px solid var(--border-color);transition:border-color 0.2s;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
-                  <div style="font-weight:700;font-size:13px;color:var(--text-main);">${t.narration}</div>
-                  <div style="font-weight:800;font-size:14px;color:var(--primary);">₹${formattedAmt}</div>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-label);font-weight:600;">
-                  <span>📂 ${t.purpose || 'General'}</span>
-                  <span>💳 ${acc}</span>
-                </div>
-              </div>`;
-            }).join('');
+            }
         }
 
         function loadRecurring(index) {
@@ -7535,7 +7869,7 @@ document.getElementById('flow').addEventListener('change', function() {
     }
 });
 
-        document.getElementById('invoice_no').addEventListener('blur', function() {
+        document.getElementById('invoice_no').addEventListener('change', function() {
             setTimeout(() => {
                 const invoiceSuggestBox = document.getElementById('invoice-suggestions');
                 if (invoiceSuggestBox) {
@@ -7779,7 +8113,10 @@ function showInvoicePopupModal() {
             if (isLongPress) return; // Ignore click if it was a long press
             
             // NEW: Save the actual Invoice Number to the hidden input for the database
-            document.getElementById('invoice_no').value = item.invoiceNo;
+            const invoiceInput = document.getElementById('invoice_no');
+            invoiceInput.value = item.invoiceNo;
+            invoiceInput.dispatchEvent(new Event('change'));
+
             
             // Keep showing the friendly Display Name (Dealer) in the UI box
             document.getElementById('selectedInvoiceText').textContent = displayName;
@@ -8722,7 +9059,743 @@ renderUpcomingRecurring = function() {
         unpaidList.innerHTML = "";
     }
 };
- 
+let isInvoiceManagerMode = false; 
+
+function toggleInvoiceManager() {
+    isInvoiceManagerMode = !isInvoiceManagerMode;
+    
+    const form = document.getElementById('txnForm');
+    const swapBtn = document.getElementById('invoiceSwapBtn');
+    const headerTitle = document.querySelector('.header-row-top h3');
+    const invoiceManagerContainer = document.getElementById('invoiceManagerContainer');
+    
+    // Elements to hide in Invoice mode
+    const dragDashBall = document.getElementById('dragDashBall');
+    const dueRecurringFab = document.getElementById('dueRecurringFab');
+    const navFab = document.getElementById('navFab'); // <-- Added nav menu container
+
+    if (isInvoiceManagerMode) {
+        // Switch to Invoice Manager Mode
+        form.classList.add('invoice-mode-active');
+        swapBtn.innerHTML = '✨'; 
+        swapBtn.title = 'Switch to Smart Entry Form';
+        headerTitle.textContent = '🧾 Invoice Manager';
+        invoiceManagerContainer.classList.remove('hidden');
+        
+        // Hide external floating elements & nav menu
+        if (dragDashBall) dragDashBall.style.display = 'none';
+        if (dueRecurringFab) dueRecurringFab.style.display = 'none';
+        if (navFab) navFab.style.display = 'none'; // <-- Hides the 🔗 button
+      fetchInvDealers();
+    } else {
+        // Revert back to Smart Entry Form
+        form.classList.remove('invoice-mode-active');
+        swapBtn.innerHTML = '🧾'; 
+        swapBtn.title = 'Switch to Invoice Manager';
+        headerTitle.textContent = '✨ Smart Entry';
+        invoiceManagerContainer.classList.add('hidden');
+        
+        // Restore external floating elements & nav menu
+        if (dragDashBall) dragDashBall.style.display = '';
+        if (dueRecurringFab) dueRecurringFab.style.display = '';
+        if (navFab) navFab.style.display = ''; // <-- Restores the 🔗 button
+    }
+}
+        // ============================================================
+        //  INVOICE MANAGER LOGIC (CREATE & VIEW MODES)
+        // ============================================================
+        const INV_API_ENTRY = "https://script.google.com/macros/s/AKfycbyGbUkkZBP480n_U_fsCNppCD6T06GT0Tbh4gI1PsBxGdmc-wpnKHzZi-kahxderWpv/exec";
+        const INV_API_VIEWER = "https://script.google.com/macros/s/AKfycbzO4WHFteF9y4woSNXo3P62pfzUGAT0l5C9anWVcZ0Whx4eqJlgpe4lJ9oWgzVY_Eel/exec";
+        const INV_API_KEY = "9848o22338B!";
+
+        let invGroceries = {};
+        let invDealersList = [];
+        let invDealerItems = [];
+
+        function createInvCustomOption(text, value, onClick) {
+            const div = document.createElement('div');
+            div.className = 'custom-option';
+            div.textContent = text;
+            div.dataset.value = value;
+            
+            // Prevent input blur (which hides keyboard and cancels click)
+            div.addEventListener('mousedown', (e) => {
+                e.preventDefault(); 
+            });
+            
+            div.onclick = (e) => { 
+                e.stopPropagation(); 
+                onClick(value, text); 
+            };
+            return div;
+        }
+
+        // --- FETCH EXISTING INVOICES ---
+        function fetchManagerInvoices(dateStr) {
+            const input = document.getElementById("invManagerNoInput");
+            const dropdown = document.getElementById("invManagerNoDropdown");
+            if (!input || !dropdown) return;
+
+            clearInvoiceSelection(true); // Soft reset to create mode initially
+
+            input.disabled = true;
+            dropdown.innerHTML = "";
+
+            const clone = input.cloneNode(true);
+            input.parentNode.replaceChild(clone, input);
+            const newInput = document.getElementById("invManagerNoInput");
+
+            fetch(`${SCRIPT_URL}?action=getInvoicesByDate&date=${dateStr}`)
+                .then(r => r.json())
+                .then(data => {
+                    newInput.disabled = false;
+                    window.availableInvoicesForDate = data || [];
+                    
+                    const renderInvs = (filter) => {
+                        dropdown.innerHTML = "";
+                        const filtered = window.availableInvoicesForDate.filter(i => 
+                            String(i.invoiceNo).toLowerCase().includes(filter.toLowerCase()) || 
+                            String(i.dealer).toLowerCase().includes(filter.toLowerCase())
+                        );
+                        
+                        if (filtered.length === 0) {
+                            dropdown.innerHTML = `<div class="custom-option empty-option">New Invoice Mode...</div>`;
+                            return;
+                        }
+
+                        filtered.forEach(inv => {
+                            const dealerName = inv.dealer || 'Unknown Dealer';
+                            const dispText = `🧾 ${dealerName} (${inv.invoiceNo}) - ₹${inv.totalAmount.toFixed(2)}`;
+                            dropdown.appendChild(createInvCustomOption(dispText, inv.invoiceNo, (val) => {
+                                // SELECTING AN EXISTING INVOICE -> VIEW MODE
+                                newInput.value = inv.invoiceNo;
+                                newInput.dataset.value = inv.invoiceNo;
+                                dropdown.classList.remove('show');
+                                
+                                document.getElementById("invCreateModeContainer").classList.add("hidden");
+                                document.getElementById("invViewModeContainer").classList.remove("hidden");
+                                
+                                const dealerInput = document.getElementById("invManagerDealerInput");
+                              // Auto-fill and DISABLE the Dealer block while editing
+                            if (dealerInput) {
+                                dealerInput.value = dealerName;
+                                dealerInput.disabled = true; 
+                                
+                                // CRITICAL ADDITION: Populate the items array for the Add Item Modal
+                                invDealerItems = [];
+                                if (invGroceries) {
+                                    Object.keys(invGroceries).forEach(item => {
+                                        invGroceries[item].forEach(d => {
+                                            if(d.dealer === dealerName) invDealerItems.push({item, price: d.price});
+                                        });
+                                    });
+                                }
+                            }
+                              loadInvItems(val); 
+                            }));
+                        });
+                    };
+
+                    newInput.addEventListener('focus', () => { 
+                        document.querySelectorAll('.custom-options-list').forEach(l => l.classList.remove('show'));
+                        dropdown.classList.add('show'); 
+                        renderInvs(newInput.value); 
+                    });
+                    
+                    newInput.addEventListener('input', (e) => { 
+                        dropdown.classList.add('show'); 
+                        renderInvs(e.target.value); 
+                        // If user types, ensure we drop back into Create mode
+                        if(document.getElementById("invCreateModeContainer").classList.contains("hidden")) {
+                            clearInvoiceSelection(true); 
+                        }
+                    });
+                }).catch(e => { newInput.disabled = false; });
+        }
+
+        // --- CLEAR & SWITCH TO CREATE MODE ---
+        function clearInvoiceSelection(preserveNo = false) {
+            if(!preserveNo) {
+                document.getElementById("invManagerNoInput").value = "";
+                document.getElementById("invManagerNoInput").dataset.value = "";
+            }
+            document.getElementById("invManagerDealerInput").disabled = false;
+            document.getElementById("invManagerDealerInput").value = "";
+            
+            document.getElementById("invViewModeContainer").classList.add("hidden");
+            document.getElementById("invCreateModeContainer").classList.remove("hidden");
+            
+            document.getElementById("invRecipientsContainer").innerHTML = "";
+            document.getElementById("invAddRecipientBtn").classList.add("hidden");
+            calcInvCreateTotal();
+        }
+        function setupInvModalItemDropdown() {
+            const nameInp = document.getElementById("invNewItemName");
+            const nameDrop = document.getElementById("invNewItemNameDropdown");
+            if (!nameInp || !nameDrop) return;
+
+            const renderItems = (filter) => {
+                nameDrop.innerHTML = "";
+                const filtered = invDealerItems.filter(i => i.item.toLowerCase().includes(filter.toLowerCase()));
+                
+                if (filtered.length === 0) {
+                    nameDrop.innerHTML = `<div class="custom-option empty-option">Custom Item...</div>`;
+                    return;
+                }
+                
+                filtered.forEach(i => {
+                    nameDrop.appendChild(createInvCustomOption(i.item, i.item, (val) => {
+                        nameInp.value = val;
+                        document.getElementById("invNewItemPrice").value = i.price;
+                        calcInvViewerModal('price'); 
+                        nameDrop.classList.remove('show');
+                    }));
+                });
+            };
+
+            nameInp.addEventListener('focus', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.custom-options-list').forEach(l => { if(l !== nameDrop) l.classList.remove('show'); });
+                nameDrop.classList.add('show');
+                renderItems(nameInp.value);
+            });
+
+            nameInp.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.custom-options-list').forEach(l => { if(l !== nameDrop) l.classList.remove('show'); });
+                nameDrop.classList.toggle('show');
+                renderItems(nameInp.value);
+            });
+
+            nameInp.addEventListener('input', (e) => {
+                nameDrop.classList.add('show');
+                renderItems(e.target.value);
+            });
+        }
+
+        // --- CREATE MODE: DEALER CHANGE LOGIC ---
+        function onInvDealerChange() {
+            const dealer = document.getElementById("invManagerDealerInput").value;
+            const addBtn = document.getElementById("invAddRecipientBtn");
+            const container = document.getElementById("invRecipientsContainer");
+            
+            container.innerHTML = "";
+            invDealerItems = [];
+            
+            if(!dealer) {
+                addBtn.classList.add("hidden");
+                calcInvCreateTotal();
+                return;
+            }
+
+            // Populate specific items for auto-complete
+            Object.keys(invGroceries).forEach(item => {
+                invGroceries[item].forEach(d => {
+                    if(d.dealer === dealer) invDealerItems.push({item, price: d.price});
+                });
+            });
+
+            addBtn.classList.remove("hidden");
+            invAddRecipientGroup(); // Auto-add first block
+        }
+
+        // --- CREATE MODE: DYNAMIC BLOCKS ---
+        function invAddRecipientGroup() {
+            const container = document.getElementById("invRecipientsContainer");
+            const recId = "rec_" + Date.now();
+            
+            const wrapper = document.createElement("div");
+            wrapper.className = "inv-recipient-group-card swipe-wrapper";
+            wrapper.id = recId;
+
+            wrapper.innerHTML = `
+                <div class="inv-swipe-bg-group">🗑 Delete Group</div>
+                <div class="inv-group-content" style="padding:14px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span style="font-size:11px; font-weight:700; color:var(--purple); background:rgba(167,139,250,0.1); padding:4px 8px; border-radius:6px; letter-spacing:0.5px; text-transform:uppercase;">Recipient Group</span>
+                    </div>
+                    <div class="custom-select-wrapper" style="margin-bottom:12px;">
+                        <input type="text" readonly class="select-input rec-name-input" value="Select">
+                        <div class="custom-options-list rec-name-dropdown"></div>
+                    </div>
+                    <input type="text" class="rec-other-input hidden" placeholder="Custom Name" style="margin-bottom:10px;">
+                    
+                    <div class="rec-items-container"></div>
+                    <button type="button" class="add-item-btn" onclick="invAddItemToGroup('${recId}')">+ Add Item</button>
+                </div>
+            `;
+            
+            const recInput = wrapper.querySelector(".rec-name-input");
+            const recDropdown = wrapper.querySelector(".rec-name-dropdown");
+            const otherInp = wrapper.querySelector(".rec-other-input");
+            
+            recInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // CRITICAL FIX: Elevate Z-Index so dropdown sits above other groups
+                document.querySelectorAll('.inv-recipient-group-card').forEach(b => b.style.zIndex = "1");
+                wrapper.style.zIndex = "100";
+
+                document.querySelectorAll('.custom-options-list').forEach(l => { if(l!==recDropdown) l.classList.remove('show'); });
+                recDropdown.classList.toggle('show');
+            });
+            
+            const opts = ["Select", "Self", "House", "Mother", "Grand Father", "Chinnama", "Family", "Pedhamma", "Vasavi", "Other"];
+            opts.forEach(opt => {
+                recDropdown.appendChild(createInvCustomOption(opt, opt, (val) => {
+                    recInput.value = val;
+                    recDropdown.classList.remove('show');
+                    if(val === 'Other') {
+                        otherInp.classList.remove('hidden');
+                        otherInp.focus();
+                    } else {
+                        otherInp.classList.add('hidden');
+                    }
+                }));
+            });
+
+            const block = wrapper.querySelector(".inv-group-content");
+            enableInvSwipe(wrapper, block, () => {
+                wrapper.remove();
+                calcInvCreateTotal();
+            }, () => container.children.length > 1);
+
+            container.appendChild(wrapper);
+            invAddItemToGroup(recId);
+        }
+
+        function invAddItemToGroup(recId) {
+            const recBlock = document.getElementById(recId);
+            if(!recBlock) return;
+            const itemsContainer = recBlock.querySelector(".rec-items-container");
+            
+            const wrapper = document.createElement("div");
+            wrapper.className = "inv-item-block swipe-wrapper";
+            wrapper.style.marginBottom = "10px";
+            
+            wrapper.innerHTML = `
+                <div class="inv-swipe-bg-item">🗑 Delete</div>
+                <div class="inv-item-content">
+                    <div class="custom-select-wrapper" style="margin-bottom:10px;">
+                        <input type="text" placeholder="Item name" class="item-name-input select-input" autocomplete="off" style="padding-right:14px; background-image:none;">
+                        <div class="custom-options-list item-name-dropdown"></div>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+                        <input type="number" placeholder="Qty" class="item-qty" style="padding:0 8px;">
+                        <input type="number" placeholder="Price" class="item-price" style="padding:0 8px;">
+                        <input type="number" placeholder="Total" class="item-total" style="padding:0 8px;">
+                    </div>
+                </div>
+            `;
+            
+            const nameInp = wrapper.querySelector(".item-name-input");
+            const nameDrop = wrapper.querySelector(".item-name-dropdown");
+            const qtyInp = wrapper.querySelector(".item-qty");
+            const priceInp = wrapper.querySelector(".item-price");
+            const totalInp = wrapper.querySelector(".item-total");
+            
+            const renderItems = (filter) => {
+                nameDrop.innerHTML = "";
+                const filtered = invDealerItems.filter(i => i.item.toLowerCase().includes(filter.toLowerCase()));
+                if(filtered.length === 0) {
+                    nameDrop.innerHTML = `<div class="custom-option empty-option">Custom Item...</div>`;
+                    return;
+                }
+                filtered.forEach(i => {
+                    nameDrop.appendChild(createInvCustomOption(i.item, i.item, (val) => {
+                        nameInp.value = val;
+                        priceInp.value = i.price;
+                        recalc('price');
+                        nameDrop.classList.remove('show');
+                    }));
+                });
+            };
+            
+            nameInp.addEventListener('focus', () => { 
+                // CRITICAL FIX: Elevate Z-Index so dropdown sits above other items
+                document.querySelectorAll('.inv-recipient-group-card').forEach(b => b.style.zIndex = "1");
+                document.querySelectorAll('.inv-item-block').forEach(b => b.style.zIndex = "1");
+                recBlock.style.zIndex = "100"; 
+                wrapper.style.zIndex = "100"; 
+
+                document.querySelectorAll('.custom-options-list').forEach(l => l.classList.remove('show'));
+                nameDrop.classList.add('show'); 
+                renderItems(nameInp.value); 
+            });
+            nameInp.addEventListener('input', (e) => { nameDrop.classList.add('show'); renderItems(e.target.value); });
+            
+            function recalc(src) {
+                const q = Number(qtyInp.value || 0);
+                const p = Number(priceInp.value || 0);
+                const t = Number(totalInp.value || 0);
+                if(q === 0) return;
+                if(src === 'price') totalInp.value = (q * p).toFixed(2);
+                if(src === 'total') priceInp.value = (t / q).toFixed(2);
+                calcInvCreateTotal();
+            }
+            
+            qtyInp.oninput = () => recalc('price');
+            priceInp.oninput = () => recalc('price');
+            totalInp.oninput = () => recalc('total');
+
+            const block = wrapper.querySelector(".inv-item-content");
+            enableInvSwipe(wrapper, block, () => {
+                wrapper.remove();
+                calcInvCreateTotal();
+            }, () => itemsContainer.children.length > 1);
+
+            itemsContainer.appendChild(wrapper);
+        }
+
+        function calcInvCreateTotal() {
+            let total = 0;
+            document.querySelectorAll("#invRecipientsContainer .item-total").forEach(inp => {
+                total += Number(inp.value || 0);
+            });
+            document.getElementById("invCreateGrandTotal").innerText = `₹${total.toFixed(2)}`;
+        }
+
+        // --- SAVE NEW INVOICE ---
+        function saveNewInvoice() {
+            const dealer = document.getElementById("invManagerDealerInput").value;
+            if(!dealer) { showToast("Select a dealer", "var(--coral)"); return; }
+            
+            const dateVal = document.getElementById("invManagerDate").value;
+            let invNo = document.getElementById("invManagerNoInput").value.trim();
+            if(!invNo) invNo = "INV-" + Date.now(); 
+
+            let items = [];
+            let valid = true;
+
+            document.querySelectorAll("#invRecipientsContainer .inv-recipient-group-card").forEach(group => {
+                const sel = group.querySelector(".rec-name-input").value;
+                let recName = sel;
+                if(sel === "Select") valid = false;
+                if(sel === "Other") recName = group.querySelector(".rec-other-input").value.trim() || "Other";
+
+                group.querySelectorAll(".inv-item-block").forEach(itemBlock => {
+                    const name = itemBlock.querySelector(".item-name-input").value.trim();
+                    const qty = Number(itemBlock.querySelector(".item-qty").value);
+                    const price = Number(itemBlock.querySelector(".item-price").value);
+                    const total = Number(itemBlock.querySelector(".item-total").value);
+                    
+                    if(!name || !qty) return;
+                    items.push({ recipient: recName, item: name, qty, price, total });
+                });
+            });
+
+            if(!valid) { showToast("Select recipients for all groups", "var(--coral)"); return; }
+            if(!items.length) { showToast("Add at least one item", "var(--coral)"); return; }
+
+            const btn = document.querySelector("#invCreateModeContainer .btn-confirm");
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="saving-text">Saving...</span>`;
+            btn.disabled = true;
+
+            fetch(INV_API_ENTRY, {
+                method: "POST",
+                body: JSON.stringify({ key: INV_API_KEY, action: "saveInvoice", shopName: dealer, billNo: invNo, billDate: dateVal, items })
+            }).then(() => {
+                showToast("✔ Invoice Saved Successfully!");
+                fetchManagerInvoices(dateVal); // Reloads the date dropdown and switches to view mode
+            }).catch(() => showToast("Error saving invoice", "var(--coral)"))
+              .finally(() => { btn.innerHTML = originalText; btn.disabled = false; });
+        }
+
+
+        // --- FETCH DEALERS ON LOAD ---
+        function fetchInvDealers() {
+            fetch(`${INV_API_ENTRY}?key=${INV_API_KEY}`)
+                .then(r => r.json())
+                .then(data => {
+                    invGroceries = data || {};
+                    const set = new Set();
+                    Object.values(invGroceries).forEach(a => a.forEach(d => set.add(d.dealer)));
+                    invDealersList = [...set].sort();
+                    
+                    const dropdown = document.getElementById("invManagerDealerDropdown");
+                    const input = document.getElementById("invManagerDealerInput");
+                    const renderDealers = (filter = "") => {
+                        dropdown.innerHTML = "";
+                        const filtered = invDealersList.filter(d => d.toLowerCase().includes(filter.toLowerCase()));
+                        if (filtered.length === 0) { dropdown.innerHTML = `<div class="custom-option empty-option">No dealers found</div>`; return; }
+                        filtered.forEach(d => {
+                            dropdown.appendChild(createInvCustomOption(d, d, (val) => {
+                                input.value = val; dropdown.classList.remove('show');
+                                onInvDealerChange(); // <-- Trigger block generation!
+                            }));
+                        });
+                    };
+                    input.addEventListener('focus', () => { 
+                        document.querySelectorAll('.custom-options-list').forEach(l => l.classList.remove('show'));
+                        dropdown.classList.add('show'); renderDealers(input.value); 
+                    });
+                    input.addEventListener('input', (e) => { 
+                        dropdown.classList.add('show'); renderDealers(e.target.value); 
+                        // If they clear the dealer, hide blocks
+                        if(!e.target.value) onInvDealerChange();
+                    });
+                });
+        }
+
+
+        // --- VIEW MODE LOGIC (UPDATED LAYOUT) ---
+        function loadInvItems(invNo) {
+            if (!invNo) return;
+            const container = document.getElementById("invGroupedItemsContainer");
+            
+            container.innerHTML = `<div class="spinner"></div><div style="text-align:center;font-size:12px;color:var(--text-label);">Loading items...</div>`;
+
+            fetch(`${INV_API_VIEWER}?action=getItems&invoiceNo=${encodeURIComponent(invNo)}`)
+                .then(r => r.json())
+                .then(items => {
+                    let g = 0;
+                    const grouped = {};
+                    items.forEach(i => {
+                        const t = Number(i.total);
+                        const rec = i.recipient || "Self";
+                        g += t;
+                        if(!grouped[rec]) grouped[rec] = { items: [], total: 0 };
+                        grouped[rec].items.push(i);
+                        grouped[rec].total += t;
+                    });
+
+                    container.innerHTML = "";
+                    if (items.length === 0) {
+                         container.innerHTML = `<div class="empty-state" style="padding:15px;"><div class="empty-icon" style="font-size:24px;">📭</div><span style="font-size:12px;font-weight:600;color:var(--text-label);">No items found.</span></div>`;
+                    } else {
+                        Object.entries(grouped).forEach(([recipient, group]) => {
+                            const groupCard = document.createElement("div");
+                            groupCard.className = "inv-recipient-group-card swipe-wrapper";
+                            
+                            // RECIPIENT PLACED AT THE TOP OF THE CARD BLOCK
+                            groupCard.innerHTML = `
+                                <div class="inv-swipe-bg-group">🗑 Delete Group</div>
+                                <div class="inv-group-content">
+                                    <div class="inv-recipient-header">
+                                        <span>👤 ${recipient}</span>
+                                        <span style="color:var(--primary); font-weight:800;">₹${group.total.toFixed(2)}</span>
+                                    </div>
+                                    <div class="inv-recipient-items-list"></div>
+                                </div>
+                            `;
+                            
+                            const groupContent = groupCard.querySelector(".inv-group-content");
+                            const itemsList = groupCard.querySelector(".inv-recipient-items-list");
+                            
+                            enableInvSwipe(groupCard, groupContent, async () => {
+                                const ok = await showConfirm(`Delete all items for ${recipient}?`);
+                                if(!ok) { groupContent.style.transform = "translateX(0)"; return; }
+                                showToast(`🗑 Deleting items for ${recipient}...`);
+                                const rows = group.items.map(i => i.row);
+                                for(let r of rows) await fetch(`${INV_API_VIEWER}?action=deleteItem&row=${r}`);
+                                loadInvItems(invNo);
+                            }, () => true);
+
+                            group.items.forEach(i => {
+                                const itemBlock = document.createElement("div");
+                                itemBlock.className = "inv-item-block swipe-wrapper";
+                                itemBlock.style.marginBottom = "8px";
+                                itemBlock.style.overflow = "visible";
+                                
+                                // MATCHES CREATION MODE GRID LOOK & DISTINCT BACKGROUND CONTRAST
+                                itemBlock.innerHTML = `
+                                    <div class="inv-swipe-bg-item">🗑 Delete</div>
+                                    <div class="inv-item-content" style="background:var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px;">
+                                        <div class="custom-select-wrapper" style="margin-bottom:8px;">
+                                            <input type="text" class="item-name-input select-input" value="${i.item}" readonly style="padding: 0 10px; height: 38px; background-image:none; font-weight:700; color:var(--text-main); background:var(--bg-input);">
+                                        </div>
+                                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
+                                            <input type="number" class="item-qty" value="${i.qty}" readonly style="height: 36px; padding:0 6px; text-align:center; color:var(--text-main); background:var(--bg-input);">
+                                            <input type="number" class="item-price" value="${Number(i.price).toFixed(2)}" readonly style="height: 36px; padding:0 6px; text-align:center; color:var(--text-main); background:var(--bg-input);">
+                                            <input type="number" class="item-total" value="${Number(i.total).toFixed(2)}" readonly style="height: 36px; padding:0 6px; text-align:center; font-weight:700; color:var(--primary); background:var(--bg-input);">
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                const content = itemBlock.querySelector(".inv-item-content");
+                                enableInvSwipe(itemBlock, content, () => {
+                                    deleteInvItem(i.row, invNo);
+                                }, () => true);
+                                
+                                itemsList.appendChild(itemBlock);
+                            });
+                            container.appendChild(groupCard);
+                        });
+                    }
+                    document.getElementById("invViewerGrandTotal").innerText = `₹${g.toFixed(2)}`;
+                }).catch(err => {
+                    container.innerHTML = `<div style="text-align:center; color:var(--coral); font-size:12px; padding: 20px;">Failed to load items.</div>`;
+                });
+        }
+
+        // --- SWIPE UTILITY ---
+        function enableInvSwipe(wrapper, content, onDelete, canDeleteCheck = () => true) {
+            let startX = 0, startY = 0, currentX = 0, dragging = false, lockedAxis = null;
+            let isDropdownTouch = false;
+
+            content.addEventListener("touchstart", (e) => {
+                if (e.target.closest('.custom-options-list')) {
+                    isDropdownTouch = true;
+                    return;
+                }
+                isDropdownTouch = false;
+                
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                currentX = startX;
+                dragging = true;
+                lockedAxis = null;
+                content.style.transition = 'none';
+            }, { passive: true });
+
+            content.addEventListener("touchmove", (e) => {
+                if(!dragging || isDropdownTouch) return;
+                
+                currentX = e.touches[0].clientX;
+                let diffX = currentX - startX;
+                let diffY = e.touches[0].clientY - startY;
+
+                if (!lockedAxis) {
+                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 5) {
+                        lockedAxis = 'horizontal';
+                        document.querySelectorAll('.custom-options-list').forEach(l => l.classList.remove('show'));
+                        // CRITICAL FIX: Force override the CSS !important rule to clip the edges during swipe
+                        wrapper.style.setProperty('overflow', 'hidden', 'important');
+                    }
+                    else if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 5) {
+                        lockedAxis = 'vertical';
+                    }
+                }
+
+                if (lockedAxis === 'horizontal') {
+                    if (e.cancelable) e.preventDefault();
+                    e.stopPropagation(); 
+                    content.style.transform = `translateX(${diffX < 0 ? Math.max(diffX, -100) : 0}px)`;
+                }
+            }, { passive: false });
+
+            content.addEventListener("touchend", (e) => {
+                if (!dragging || isDropdownTouch) return;
+                dragging = false;
+                content.style.transition = 'transform 0.2s ease';
+                
+                if (lockedAxis === 'horizontal' && (currentX - startX < -60)) {
+                    if (canDeleteCheck()) {
+                        // Allow Delete
+                        content.style.transform = 'translateX(-100%)';
+                        setTimeout(() => { onDelete(); }, 200);
+                    } else {
+                        // Prevent Delete: Bounce back and notify
+                        content.style.transform = "translateX(-20px)";
+                        setTimeout(() => content.style.transform = "translateX(0)", 150);
+                        setTimeout(() => { if(wrapper.isConnected) wrapper.style.setProperty('overflow', 'visible', 'important'); }, 200);
+                        if (typeof showToast === "function") showToast("At least 1 required", "#F59E0B");
+                    }
+                } else {
+                    content.style.transform = "translateX(0)";
+                    setTimeout(() => { if(wrapper.isConnected) wrapper.style.setProperty('overflow', 'visible', 'important'); }, 200);
+                }
+                lockedAxis = null;
+            });
+        }
+
+        // --- ACTION BUTTONS & MODAL ---
+        function deleteInvItem(row, invNo) {
+            showToast("🗑 Deleting item...");
+            fetch(`${INV_API_VIEWER}?action=deleteItem&row=${row}`).then(() => loadInvItems(invNo));
+        }
+
+        async function deleteEntireInv() {
+            const invNo = document.getElementById("invManagerNoInput").dataset.value;
+            if(!invNo) return;
+            const ok = await showConfirm(`Delete entire invoice ${invNo}?`);
+            if(!ok) return;
+
+            showToast("🗑 Deleting invoice...");
+            fetch(`${INV_API_VIEWER}?action=deleteInvoice&billNo=${encodeURIComponent(invNo)}`)
+                .then(() => {
+                    fetchManagerInvoices(document.getElementById("invManagerDate").value);
+                    showToast("Invoice deleted");
+                });
+        }
+
+        function toggleInvAddItemModal() {
+            document.getElementById("invAddItemModal").classList.toggle("hidden");
+            document.getElementById("invNewItemName").value = "";
+            document.getElementById("invNewItemQty").value = "";
+            document.getElementById("invNewItemPrice").value = "";
+            document.getElementById("invNewItemTotal").value = "";
+        }
+
+        function calcInvViewerModal(src) {
+            const q = Number(document.getElementById("invNewItemQty").value || 0);
+            const p = Number(document.getElementById("invNewItemPrice").value || 0);
+            const t = Number(document.getElementById("invNewItemTotal").value || 0);
+            if(q === 0) return;
+            if(src === 'qty' || src === 'price') document.getElementById("invNewItemTotal").value = (q * p).toFixed(2);
+            if(src === 'total') document.getElementById("invNewItemPrice").value = (t / q).toFixed(2);
+        }
+
+        function confirmAddInvItem() {
+            const invNo = document.getElementById("invManagerNoInput").dataset.value;
+            const dVal = document.getElementById("invManagerDate").value;
+            const name = document.getElementById("invNewItemName").value.trim();
+            const qty = document.getElementById("invNewItemQty").value;
+            const total = document.getElementById("invNewItemTotal").value;
+            
+            if(!invNo || !name || !qty || !dVal) { showToast("Fill required fields", "var(--coral)"); return; }
+
+            const price = document.getElementById("invNewItemPrice").value || (total / qty);
+            const recipient = document.getElementById("invNewItemRecipient").value;
+            
+            showToast("➕ Adding item...");
+            fetch(`${INV_API_VIEWER}?action=addItem&billNo=${encodeURIComponent(invNo)}&item=${encodeURIComponent(name)}&qty=${qty}&price=${price}&date=${dVal}&recipient=${encodeURIComponent(recipient)}`)
+                .then(() => {
+                    toggleInvAddItemModal();
+                    loadInvItems(invNo);
+                    showToast("Item added successfully");
+                });
+        }
+
+        function setupInvModalRecipient() {
+            const RECIPIENT_OPTIONS = ["Self", "House", "Mother", "Grand Father", "Chinnama", "Family", "Pedhamma", "Vasavi", "Other"];
+            const modalRecInput = document.getElementById("invNewItemRecipient");
+            const modalRecDropdown = document.getElementById("invNewItemRecipientDropdown");
+            modalRecInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.custom-options-list').forEach(l => { if(l !== modalRecDropdown) l.classList.remove('show'); });
+                modalRecDropdown.classList.toggle('show');
+            });
+            RECIPIENT_OPTIONS.forEach(opt => {
+                modalRecDropdown.appendChild(createInvCustomOption(opt, opt, (val) => {
+                    modalRecInput.value = val;
+                    modalRecDropdown.classList.remove('show');
+                }));
+            });
+        }
+
+        // Initialize UI, APIs, and Event Listeners
+        setTimeout(() => {
+            let invManagerDatePicker = flatpickr("#invManagerDate", {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "j-M-Y",
+                disableMobile: true,
+                defaultDate: getTodayIST(),
+                onChange: function(selectedDates, dateStr, instance) { fetchManagerInvoices(dateStr); }
+            });
+            fetchManagerInvoices(getTodayIST());
+            fetchInvDealers();
+            setupInvModalRecipient();
+            setupInvModalItemDropdown();
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.custom-select-wrapper')) {
+                    document.querySelectorAll('.custom-options-list').forEach(l => l.classList.remove('show'));
+                }
+            });
+        }, 500);
+
         window.onload = () => {
             fullReset();
             loadPurposeMemory();
@@ -8746,6 +9819,133 @@ renderUpcomingRecurring = function() {
                 });
             }, 200);
         };
+      // ============================================================
+//  VERTICAL SWIPE GESTURE FOR YEAR NAVIGATION IN FLATPICKR
+// ============================================================
+(function() {
+    let touchStartY = 0;
+    let touchEndY = 0;
+
+    // Helper to find the currently open Flatpickr instance on the page
+    function getActiveFlatpickrInstance() {
+        const inputs = [
+            document.getElementById('invManagerDate'),
+            document.getElementById('date'),
+            document.getElementById('loggerDatePicker'),
+            document.getElementById('borrowerDatePicker')
+        ];
+        for (const input of inputs) {
+            if (input && input._flatpickr && input._flatpickr.isOpen) {
+                return input._flatpickr;
+            }
+        }
+        return null;
+    }
+
+    document.addEventListener('touchstart', (e) => {
+        const calendar = e.target.closest('.flatpickr-calendar');
+        if (calendar) {
+            touchStartY = e.touches[0].clientY;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const calendar = e.target.closest('.flatpickr-calendar');
+        if (!calendar) return;
+
+        touchEndY = e.changedTouches[0].clientY;
+        const diff = touchStartY - touchEndY;
+        const threshold = 50; // Minimum pixel distance required for a swipe
+
+        if (Math.abs(diff) > threshold) {
+            const fpInstance = getActiveFlatpickrInstance();
+            if (!fpInstance) return;
+
+            if (diff > 0) {
+                // Swipe Up -> Next Year
+                fpInstance.changeYear(fpInstance.currentYear + 1);
+                showToast(`📅 Year: ${fpInstance.currentYear}`);
+            } else {
+                // Swipe Down -> Previous Year
+                fpInstance.changeYear(fpInstance.currentYear - 1);
+                showToast(`📅 Year: ${fpInstance.currentYear}`);
+            }
+        }
+    }, { passive: true });
+})();
+// ============================================================
+//  SWIPE GESTURES FOR MONTH & YEAR NAVIGATION IN FLATPICKR
+// ============================================================
+(function() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
+    // Helper to find the currently open Flatpickr instance on the page
+    function getActiveFlatpickrInstance() {
+        const inputs = [
+            document.getElementById('invManagerDate'),
+            document.getElementById('date'),
+            document.getElementById('loggerDatePicker'),
+            document.getElementById('borrowerDatePicker')
+        ];
+        for (const input of inputs) {
+            if (input && input._flatpickr && input._flatpickr.isOpen) {
+                return input._flatpickr;
+            }
+        }
+        return null;
+    }
+
+    document.addEventListener('touchstart', (e) => {
+        const calendar = e.target.closest('.flatpickr-calendar');
+        if (calendar) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const calendar = e.target.closest('.flatpickr-calendar');
+        if (!calendar) return;
+
+        touchEndX = e.changedTouches[0].clientX;
+        touchEndY = e.changedTouches[0].clientY;
+
+        const diffX = touchStartX - touchEndX;
+        const diffY = touchStartY - touchEndY;
+        const threshold = 50; // Minimum pixel distance required for a swipe
+
+        // Check if horizontal swipe is dominant (Month Navigation)
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
+            const fpInstance = getActiveFlatpickrInstance();
+            if (!fpInstance) return;
+
+            if (diffX > 0) {
+                // Swipe Left -> Next Month
+                fpInstance.changeMonth(1);
+            } else {
+                // Swipe Right -> Previous Month
+                fpInstance.changeMonth(-1);
+            }
+        } 
+        // Check if vertical swipe is dominant (Year Navigation)
+        else if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > threshold) {
+            const fpInstance = getActiveFlatpickrInstance();
+            if (!fpInstance) return;
+
+            if (diffY > 0) {
+                // Swipe Up -> Next Year
+                fpInstance.changeYear(fpInstance.currentYear + 1);
+            } else {
+                // Swipe Down -> Previous Year
+                fpInstance.changeYear(fpInstance.currentYear - 1);
+            }
+        }
+    }, { passive: true });
+})();
+
     </script>
 </body>
 </html>
