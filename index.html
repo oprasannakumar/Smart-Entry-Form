@@ -1072,8 +1072,10 @@ payment-row .popup-trigger-select,
         #mathKeyboard {
             position: fixed;
             bottom: -100%;
-            left: 0;
-            width: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 420px;
             background: var(--bg-card);
             box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
             z-index: 10005;
@@ -1084,6 +1086,7 @@ payment-row .popup-trigger-select,
             border-top: 1px solid var(--border-color);
             box-sizing: border-box;
         }
+
         #mathKeyboard.show {
             bottom: 0;
         }
@@ -3412,7 +3415,7 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
                 activeMathInput.setAttribute('inputmode', 'none');
                 mathKeyboard.classList.add('show');
                 kbPreview.textContent = activeMathInput.value || '0';
-                document.body.style.paddingBottom = '500px';
+                document.body.style.paddingBottom = '190px';
                 setTimeout(() => {
                     if (activeMathInput) {
                         const rect = activeMathInput.getBoundingClientRect();
