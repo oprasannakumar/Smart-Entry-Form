@@ -4864,7 +4864,11 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
             document.getElementById('paymentContainer').appendChild(wrapper);
             enableSwipeToDelete(wrapper, 1);
             if (initial) {
-                tSel.value = initial.type;
+                if (initial.type) {
+                    const typeMatch = Array.from(tSel.options).find(opt => opt.value.toLowerCase() === String(initial.type).toLowerCase());
+                    tSel.value = typeMatch ? typeMatch.value : initial.type;
+                }
+                
                 tSel.dispatchEvent(new Event('change'));
                 if (initial.acc) {
                     const optionExists = Array.from(aSel.options).some(opt => opt.value.toLowerCase() === initial.acc
