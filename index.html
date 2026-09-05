@@ -2572,10 +2572,18 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
         <div class="total-wrapper" id="totalWrapper">
             <div style="display:flex;flex-direction:column;gap:6px;" id="totalLabelGroup">
                 <span style="font-size:12px;font-weight:700;color:var(--text-label);text-transform:uppercase;letter-spacing:0.5px;">Total Amount:</span>
+                
+                <!-- NEW: Hidden Charges Warning Label -->
+                <span id="chargesLabel" class="hidden" style="font-size:11px;font-weight:800;color:var(--coral);text-transform:uppercase;letter-spacing:0.5px;background:rgba(255,107,107,0.1);padding:3px 6px;border-radius:6px;border:1px solid rgba(255,107,107,0.3);">⚠️ Auto-Fill Charges:</span>
+                
                 <span id="splitDiffLabel" class="split-only hidden" style="font-size:12px;font-weight:700;color:var(--text-label);text-transform:uppercase;letter-spacing:0.5px;">Difference:</span>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                 <span style="font-size:18px;font-weight:800;color:var(--primary);" id="grandTotal">₹0.00</span>
+                
+                <!-- NEW: Hidden Charges Value -->
+                <span id="chargesValue" class="hidden" style="font-size:12px;font-weight:800;color:var(--coral);margin-top:2px;">₹0.00</span>
+                
                 <span id="splitDiffContainer" class="split-only hidden" style="font-size:15px;font-weight:700;display:flex;">
                     <strong id="splitDifference" style="color:var(--secondary);">₹0.00</strong>
                 </span>
@@ -5130,6 +5138,7 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
                 } else {
                     multiTxnQueue = [];
                     document.getElementById('multiTxnNav').classList.add('hidden');
+                    fullReset(batchMode);
                     applyAutoFill(text);
                     showToast("Autofill applied");
                 }
@@ -5158,7 +5167,7 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
                             `📅 Date: ${d.date}\n👤 Name: ${d.name}\n📝 Msg: ${d.imageMessage}\n💰 Amount: ${d.amount}\n📊 Direction: ${d.direction === "IN" ? "🟢 IN" : "🔴 OUT"}\n⇄ Type: ${d.type}\n🏢 Account: ${d.account}\n🔗 Ref: ${d.refId}`;
                         multiTxnQueue = [];
                         document.getElementById('multiTxnNav').classList.add('hidden');
-                        applyAutoFill(formattedText);
+fullReset(batchMode);                        applyAutoFill(formattedText);
                         setTimeout(() => {
                             document.querySelectorAll('select:not(.popup-select-hidden):not(.no-popup)')
                                 .forEach(sel => {
@@ -5985,7 +5994,7 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
             const rawDate = getVal('📅 Date'),
                 name = getVal('👤 Name'),
                 msg = getVal('📝 Msg'),
-                amountStr = getVal('💰 Amount'),
+                amountStr = getVal('💰 Amount'),rawCharges = getVal('💸 Charges'),
                 ref = getVal('🔗 Ref'),
                 rawType = getVal('⇄ Type'),
                 rawAcc = getVal('🏢 Account'),
@@ -6065,6 +6074,35 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
             if (amountStr) { const numericAmt = amountStr.replace(/[^\d.\-]/g, '');
                 amtInput.value = numericAmt;
                 updateGrandTotal(); }
+const chargesLabel = document.getElementById('chargesLabel');
+            const chargesValue = document.getElementById('chargesValue');
+            
+            if (rawCharges) {
+                const numericCharges = parseFloat(rawCharges.replace(/[^\d.\-]/g, '')) || 0;
+                
+                if (numericCharges > 0) {
+                    if (rawAcc && rawAcc.toLowerCase().includes('hdfc phonepe')) {
+                        // Automatically add the offset row for HDFC PhonePe
+                        createPaymentRow({
+                            type: 'REWARDS',
+                            acc: 'HDFC PhonePe',
+                            amt: -Math.abs(numericCharges)
+                        });
+                        
+                        updateGrandTotal(); // Recalculate total with the new negative row
+                        
+                        setTimeout(() => showToast(`✨ Auto-added -₹${numericCharges} as Rewards offset`), 1000);
+                    } else {
+                        // Show the standard warning for any other accounts
+                        if (chargesLabel) chargesLabel.classList.remove('hidden');
+                        if (chargesValue) {
+                            chargesValue.textContent = `₹${numericCharges.toFixed(2)}`;
+                            chargesValue.classList.remove('hidden');
+                        }
+                        setTimeout(() => showToast(`⚠️ Heads up: This transaction included ₹${numericCharges} in charges!`, "var(--coral)"), 1500);
+                    }
+                }
+            }
             if (ref) { document.getElementById('reference').value = ref; }
             setTimeout(() => {
                 [purposeSelect, flowField, spentForSelect].forEach(sel => {
@@ -6089,6 +6127,11 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
             if (diffLabel) {
                 diffLabel.classList.add('hidden');
             }
+          const chargesLabel = document.getElementById('chargesLabel');
+            const chargesValue = document.getElementById('chargesValue');
+            if (chargesLabel) chargesLabel.classList.add('hidden');
+            if (chargesValue) chargesValue.classList.add('hidden');
+
             if (!keepModes) {
                 batchMode = false;
                 recurringMode = false;
