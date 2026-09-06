@@ -7779,7 +7779,7 @@ recurringType.addEventListener("change", function() {
                     const contacts = await navigator.contacts.select(props, opts);
                     if (contacts.length > 0 && contacts[0].name && contacts[0].name.length > 0) {
                         targetInput.value = contacts[0].name[0];
-                        showToast("👤 Contact imported");
+                        showToast("👤 Contact imported");targetInput.dispatchEvent(new Event('input', { bubbles: true }));
                     }
                 } catch (ex) {
                     if (ex.name !== 'AbortError') { console.error('Contact Picker Error:', ex);
@@ -9017,8 +9017,14 @@ document.getElementById('spentContactBtn').addEventListener('click', async () =>
         if ('contacts' in navigator && 'ContactsManager' in window) {
             const contacts = await navigator.contacts.select(props, opts);
             if (contacts.length > 0 && contacts[0].name && contacts[0].name.length > 0) {
-                document.getElementById('spent_for_other').value = contacts[0].name[0];
+                
+                // FIX: Explicitly define the input element before modifying and dispatching
+                const otherInput = document.getElementById('spent_for_other');
+                otherInput.value = contacts[0].name[0];
                 showToast("👤 Contact imported");
+                
+                // Now this will correctly trigger the Split Mode generation logic
+                otherInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
         } else {
             showToast("Contact Picker not supported in this browser", "#F59E0B");
@@ -9030,6 +9036,7 @@ document.getElementById('spentContactBtn').addEventListener('click', async () =>
         }
     }
 });
+
 
     // Toggle mic on button click
     micBtn.addEventListener('click', (e) => {
