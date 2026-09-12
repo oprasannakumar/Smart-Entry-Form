@@ -2815,11 +2815,39 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
             </div>
         </div>
     </div>
-    <!-- ===== DUE RECURRING FAB & MODAL ===== -->
-    <button type="button" id="dueRecurringFab" class="hidden" title="Pending Recurring Transactions" onclick="document.getElementById('dueRecurringModal').classList.remove('hidden')">
-        <span class="fab-icon">⏳</span>
-        <span id="dueRecurringCount" class="fab-badge">0</span>
-    </button>
+<!-- ===== DUE RECURRING FAB & MODAL ===== -->
+<button type="button" id="dueRecurringFab" class="hidden" title="Pending Alerts" onclick="document.getElementById('dueRecurringModal').classList.remove('hidden')">
+    <span class="fab-icon">🔔</span>
+    <span id="dueRecurringCount" class="fab-badge">0</span>
+</button>
+
+<div id="dueRecurringModal" class="modal hidden">
+    <div class="confirm-card" style="max-width:95%;width:380px;padding:20px;">
+        
+        <!-- Universal Modal Header (Always Visible) -->
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+            <h3 style="margin:0;font-size:16px;color:var(--primary);">🔔 Action Required</h3>
+            <span style="cursor:pointer;font-size:18px;font-weight:700;color:var(--text-label);" onclick="document.getElementById('dueRecurringModal').classList.add('hidden')">✕</span>
+        </div>
+
+        <!-- Pending Recurring Section (Hidden if Empty) -->
+        <div id="pendingRecurringSection" class="hidden">
+            <h3 style="margin:0 0 10px 0; font-size:14px; color:var(--purple);">⏳ Pending Recurring Payments</h3>
+            <div id="dueRecurringList" style="display:flex;flex-direction:column;gap:8px;max-height:40vh;overflow-y:auto;padding-right:4px;">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+        
+        <!-- Unpaid Cards Section (Hidden if Empty) -->
+        <div id="unpaidCardsSection" class="hidden">
+            <h3 style="margin:0 0 10px 0; font-size:14px; color:var(--coral);">💳 Unpaid Credit Card Bills</h3>
+            <div id="unpaidCardsList" style="display:flex; flex-direction:column; gap:8px; max-height:40vh; overflow-y:auto; padding-right:4px;">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+
+    </div>
+</div>
 
     <div id="dueRecurringModal" class="modal hidden">
         <div class="confirm-card" style="max-width:95%;width:380px;padding:20px;">
@@ -6748,91 +6776,109 @@ const chargesLabel = document.getElementById('chargesLabel');
             });
         }
 
-        function renderUpcomingRecurring() {
-            const list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
-            const fab = document.getElementById("dueRecurringFab");
-            const countEl = document.getElementById("dueRecurringCount");
-            const modalList = document.getElementById("dueRecurringList");
-            const unpaidSection = document.getElementById("unpaidCardsSection");
-            const unpaidList = document.getElementById("unpaidCardsList");
+function renderUpcomingRecurring() {
+    const list = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
+    const fab = document.getElementById("dueRecurringFab");
+    const countEl = document.getElementById("dueRecurringCount");
+    
+    // Get the containers
+    const pendingRecurringSection = document.getElementById("pendingRecurringSection");
+    const modalList = document.getElementById("dueRecurringList");
+    const unpaidSection = document.getElementById("unpaidCardsSection");
+    const unpaidList = document.getElementById("unpaidCardsList");
+    
+    if (!fab || !countEl) return;
+
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    
+    const dueTemplates = list.map((t, index) => ({ ...t, originalIndex: index }))
+        .filter(t => {
+            if (!t.active || !t.date) return false;
+            const dueDate = new Date(t.date);
+            dueDate.setHours(0, 0, 0, 0);
+            return dueDate <= todayDate;
+        });
+        
+    const recurringCount = dueTemplates.length;
+    const unpaidCount = Array.isArray(globalUnpaidCards) ? globalUnpaidCards.length : 0;
+    const totalCount = recurringCount + unpaidCount;
+
+    // 1. Handle Recurring Payments Section
+    if (recurringCount > 0 && pendingRecurringSection && modalList) {
+        pendingRecurringSection.classList.remove("hidden");
+        modalList.innerHTML = dueTemplates.map(t => {
+            let amt = "0.00", acc = "";
+            if (t.split_enabled) {
+                const total = (t.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                amt = total.toFixed(2);
+                acc = "💸 Split";
+            } else if (t.payments && t.payments.length > 0) {
+                const p = new URLSearchParams(t.payments[0]);
+                amt = (p.get("withdrawn") && p.get("withdrawn") !== "0") ? p.get("withdrawn") : p.get("deposit");
+                acc = p.get("from_to") || "Account";
+            }
+            const formattedAmt = Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
-            if (!fab || !countEl) return;
+            return `
+              <div onclick="document.getElementById('dueRecurringModal').classList.add('hidden'); loadRecurring(${t.originalIndex});" 
+                   style="cursor:pointer;padding:12px;background:var(--bg-input);border-radius:var(--r);border:1.5px solid var(--border-color);transition:border-color 0.2s;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+                  <div style="font-weight:700;font-size:13px;color:var(--text-main);">${t.narration}</div>
+                  <div style="font-weight:800;font-size:14px;color:var(--primary);">₹${formattedAmt}</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-label);font-weight:600;">
+                  <span>📂 ${t.purpose || 'General'}</span>
+                  <span>💳 ${acc}</span>
+                </div>
+              </div>`;
+        }).join('');
+    } else if (pendingRecurringSection) {
+        pendingRecurringSection.classList.add("hidden");
+        if (modalList) modalList.innerHTML = "";
+    }
 
-            const todayDate = new Date();
-            todayDate.setHours(0, 0, 0, 0);
-            
-            const dueTemplates = list.map((t, index) => ({ ...t, originalIndex: index }))
-                .filter(t => {
-                    if (!t.active || !t.date) return false;
-                    const dueDate = new Date(t.date);
-                    dueDate.setHours(0, 0, 0, 0);
-                    return dueDate <= todayDate;
-                });
-                
-            // Render recurring items list
-            if (modalList) {
-                modalList.innerHTML = dueTemplates.map(t => {
-                    let amt = "0.00", acc = "";
-                    if (t.split_enabled) {
-                        const total = (t.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                        amt = total.toFixed(2);
-                        acc = "💸 Split";
-                    } else if (t.payments && t.payments.length > 0) {
-                        const p = new URLSearchParams(t.payments[0]);
-                        amt = (p.get("withdrawn") && p.get("withdrawn") !== "0") ? p.get("withdrawn") : p.get("deposit");
-                        acc = p.get("from_to") || "Account";
-                    }
-                    const formattedAmt = Number(amt || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    
-                    return `
-                      <div onclick="document.getElementById('dueRecurringModal').classList.add('hidden'); loadRecurring(${t.originalIndex});" 
-                           style="cursor:pointer;padding:12px;background:var(--bg-input);border-radius:var(--r);border:1.5px solid var(--border-color);transition:border-color 0.2s;">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
-                          <div style="font-weight:700;font-size:13px;color:var(--text-main);">${t.narration}</div>
-                          <div style="font-weight:800;font-size:14px;color:var(--primary);">₹${formattedAmt}</div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-label);font-weight:600;">
-                          <span>📂 ${t.purpose || 'General'}</span>
-                          <span>💳 ${acc}</span>
-                        </div>
-                      </div>`;
-                }).join('');
-            }
-
-            // Calculate combined count including unpaid cards
-            const recurringCount = dueTemplates.length;
-            const unpaidCount = Array.isArray(globalUnpaidCards) ? globalUnpaidCards.length : 0;
-            const totalCount = recurringCount + unpaidCount;
-
-            if (totalCount > 0) {
-                fab.classList.remove("hidden");
-                countEl.textContent = totalCount;
-            } else {
-                fab.classList.add("hidden");
-            }
-
-            // Render Unpaid Cards Section
-            if (unpaidSection && unpaidList) {
-                if (unpaidCount > 0) {
-                    unpaidSection.classList.remove("hidden");
-                    unpaidList.innerHTML = globalUnpaidCards.map(card => `
-                        <div style="padding:12px; background:rgba(255,107,107,0.05); border-radius:var(--r); border:1.5px solid var(--coral); display:flex; flex-direction:column; gap:6px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <strong style="font-size:13px; color:var(--text-main);">${card.cardName || ''}</strong>
-                                <strong style="font-size:14px; color:var(--coral);">₹${Number(card.dueAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-label); font-weight:600;">
-                                <span>⚠️ Due: ${card.dueDate || ''}</span>
-                                <span>Outst: ₹${Number(card.outstanding || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    unpaidSection.classList.add("hidden");
-                    unpaidList.innerHTML = "";
-                }
-            }
+    // 2. Handle Unpaid Cards Section
+    if (unpaidCount > 0 && unpaidSection && unpaidList) {
+        unpaidSection.classList.remove("hidden");
+        
+        // Manage the dynamic gap/border between the two sections
+        if (recurringCount > 0) {
+            unpaidSection.style.marginTop = "15px";
+            unpaidSection.style.borderTop = "1px dashed var(--border-color)";
+            unpaidSection.style.paddingTop = "15px";
+        } else {
+            // Remove gap and line completely if recurring section is empty
+            unpaidSection.style.marginTop = "0";
+            unpaidSection.style.borderTop = "none";
+            unpaidSection.style.paddingTop = "0";
         }
+
+        unpaidList.innerHTML = globalUnpaidCards.map(card => `
+            <div style="padding:12px; background:rgba(255,107,107,0.05); border-radius:var(--r); border:1.5px solid var(--coral); display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:13px; color:var(--text-main);">${card.cardName || ''}</strong>
+                    <strong style="font-size:14px; color:var(--coral);">₹${Number(card.dueAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-label); font-weight:600;">
+                    <span>⚠️ Due: ${card.dueDate || ''}</span>
+                    <span>Outst: ₹${Number(card.outstanding || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                </div>
+            </div>
+        `).join('');
+    } else if (unpaidSection) {
+        unpaidSection.classList.add("hidden");
+        if (unpaidList) unpaidList.innerHTML = "";
+    }
+
+    // 3. Update FAB Badge
+    if (totalCount > 0) {
+        fab.classList.remove("hidden");
+        countEl.textContent = totalCount;
+    } else {
+        fab.classList.add("hidden");
+    }
+}
 
         function loadRecurring(index) {
             const templates = JSON.parse(localStorage.getItem("recurringTemplates") || "[]");
@@ -9070,55 +9116,6 @@ async function fetchUnpaidCards() {
     }
 }
 
-// Intercept and extend your existing renderUpcomingRecurring function
-const originalRenderUpcomingRecurring = renderUpcomingRecurring;
-renderUpcomingRecurring = function() {
-    // 1. Run your existing logic for recurring bills first
-    originalRenderUpcomingRecurring();
-
-    // 2. Fetch the DOM elements
-    const fab = document.getElementById("dueRecurringFab");
-    const countEl = document.getElementById("dueRecurringCount");
-    const unpaidSection = document.getElementById("unpaidCardsSection");
-    const unpaidList = document.getElementById("unpaidCardsList");
-
-    if (!fab || !countEl || !unpaidSection || !unpaidList) return;
-
-    // 3. Calculate the combined total of due recurring items AND unpaid cards
-    let recurringCount = parseInt(countEl.textContent) || 0;
-    if (fab.classList.contains("hidden")) recurringCount = 0; 
-    
-    const unpaidCount = Array.isArray(globalUnpaidCards) ? globalUnpaidCards.length : 0;
-    const totalCount = recurringCount + unpaidCount;
-
-    // 4. Show/Hide the FAB and update the badge with the combined total
-    if (totalCount > 0) {
-        fab.classList.remove("hidden");
-        countEl.textContent = totalCount;
-    } else {
-        fab.classList.add("hidden");
-    }
-
-    // 5. Render the Unpaid Cards HTML
-    if (unpaidCount > 0) {
-        unpaidSection.classList.remove("hidden");
-        unpaidList.innerHTML = globalUnpaidCards.map(card => `
-            <div style="padding:12px; background:rgba(255,107,107,0.05); border-radius:var(--r); border:1.5px solid var(--coral); display:flex; flex-direction:column; gap:6px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong style="font-size:13px; color:var(--text-main);">${card.cardName || ''}</strong>
-                    <strong style="font-size:14px; color:var(--coral);">₹${Number(card.dueAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-label); font-weight:600;">
-                    <span>⚠️ Due: ${card.dueDate || ''}</span>
-                    <span>Outst: ₹${Number(card.outstanding || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                </div>
-            </div>
-        `).join('');
-    } else {
-        unpaidSection.classList.add("hidden");
-        unpaidList.innerHTML = "";
-    }
-};
 let isInvoiceManagerMode = false; 
 
 function toggleInvoiceManager() {
