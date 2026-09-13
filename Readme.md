@@ -1,6 +1,4 @@
-I've analyzed the repository structure and key files. Based on the manifest.json, sw.js, assetlinks.json, and commit diffs, here's a comprehensive README.md for new developers and contributors.
 
-```markdown
 # Smart Entry Form
 
 A **Progressive Web App (PWA)** for fast, offline‑first transaction entry, designed for bike taxi operators, small businesses, and personal finance tracking. The app works seamlessly offline, supports multiple entry modes, and can be installed on any device (mobile or desktop) and packaged as an Android app via Trusted Web Activity (TWA).
@@ -156,6 +154,3 @@ Maintainer: oprasannakumar, Jithugk-95
 For questions or support, please open an issue on GitHub.
 
 ```
-
----
-
