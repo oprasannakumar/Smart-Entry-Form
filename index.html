@@ -2310,26 +2310,6 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
     </div>
 </div>
 
-        <!-- ===== BALANCE MODAL ===== -->
-        <div id="balanceModal" class="modal hidden">
-            <div class="confirm-card" style="max-width:95%;width:340px;padding:20px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
-                    <h3 style="margin:0;font-size:16px;color:var(--secondary);">💰 Accounts &amp; Credit</h3>
-                    <span style="cursor:pointer;font-size:18px;font-weight:700;" onclick="closeBalanceModal()">✕</span>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:14px;max-height:65vh;overflow-y:auto;padding-right:4px;">
-                    <div id="modalSavingsContainer">
-                        <strong style="font-size:11px;color:var(--text-label);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Savings</strong>
-                        <div id="modalSavingsList" style="display:flex;flex-direction:column;gap:6px;">Loading...</div>
-                    </div>
-                    <div id="modalCreditContainer" style="border-top:1px dashed var(--border-color);padding-top:10px;">
-                        <strong style="font-size:11px;color:var(--text-label);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Credit Cards</strong>
-                        <div id="modalCreditList" style="display:flex;flex-direction:column;gap:6px;">Loading...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- ===== DATE & REFERENCE ===== -->
         <div class="grid-2">
             <div style="display:flex;flex-direction:column;">
@@ -2340,46 +2320,6 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
             <div id="referenceContainer" style="display:flex;flex-direction:column;">
                 <label style="margin-top:0;">🔖 Reference</label>
                 <input type="text" id="reference" placeholder="">
-            </div>
-        </div>
-
-        <!-- ===== BORROWER MODAL ===== -->
-        <div id="borrowerModal" class="modal hidden">
-            <div class="confirm-card" style="max-width:95%;width:380px;padding:20px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
-                    <h3 style="margin:0;font-size:16px;color:var(--secondary);">🤝 Loan Borrower Finder</h3>
-                    <span style="cursor:pointer;font-size:18px;font-weight:700;" onclick="closeBorrowerModal()">✕</span>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:12px;max-height:75vh;padding-right:4px;">
-                    <div>
-                        <label style="margin-top:0;">Select Borrower</label>
-                        <select id="borrowerSelect" data-popup-label="Select Borrower" onchange="renderSelectedBorrowerDetails()">
-                            <option value="">— Choose Borrower —</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="margin-top:0;">Filter by Date Range</label>
-                        <input type="text" id="borrowerDatePicker" placeholder="Select Date or Range" style="width:100%;height:38px;padding:0 12px;border-radius:var(--r);border:1.5px solid var(--border-color);background:var(--bg-input);color:var(--text-main);font-size:13px;font-weight:600;text-align:center;">
-                    </div>
-                    <div id="borrowerDetailsCard" class="hidden" style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:flex;justify-content:space-between;font-size:12px;">
-                            <span style="color:var(--text-label);font-weight:700;">Amount Given:</span>
-                            <strong id="borrowerGivenVal" style="color:var(--coral);">₹0.00</strong>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;font-size:12px;">
-                            <span style="color:var(--text-label);font-weight:700;">Amount Received:</span>
-                            <strong id="borrowerReceivedVal" style="color:var(--secondary);">₹0.00</strong>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px dashed var(--border-color);padding-top:6px;margin-top:2px;">
-                            <span style="color:var(--text-main);font-weight:700;">Net Balance:</span>
-                            <strong id="borrowerDiffVal" style="color:var(--purple);">₹0.00</strong>
-                        </div>
-                    </div>
-                    <div id="borrowerTxnContainer" class="hidden" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
-                        <strong style="font-size:11px;color:var(--text-label);text-transform:uppercase;letter-spacing:0.5px;">Transactions</strong>
-                        <div id="borrowerTxnList" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;"></div>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -2477,7 +2417,6 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
     </div>
 </div>
 
-<!-- ===== SPENT FOR ===== -->
 <!-- ===== SPENT FOR ===== -->
 <div id="spentForGroup">
     <label style="margin-top:12px;">👤 Spent For</label>
@@ -2751,6 +2690,66 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
             </div>
         </div>
     </div>
+        <!-- ===== BORROWER MODAL ===== -->
+        <div id="borrowerModal" class="modal hidden">
+            <div class="confirm-card" style="max-width:95%;width:380px;padding:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+                    <h3 style="margin:0;font-size:16px;color:var(--secondary);">🤝 Loan Borrower Finder</h3>
+                    <span style="cursor:pointer;font-size:18px;font-weight:700;" onclick="closeBorrowerModal()">✕</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;max-height:75vh;padding-right:4px;">
+                    <div>
+                        <label style="margin-top:0;">Select Borrower</label>
+                        <select id="borrowerSelect" data-popup-label="Select Borrower" onchange="renderSelectedBorrowerDetails()">
+                            <option value="">— Choose Borrower —</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="margin-top:0;">Filter by Date Range</label>
+                        <input type="text" id="borrowerDatePicker" placeholder="Select Date or Range" style="width:100%;height:38px;padding:0 12px;border-radius:var(--r);border:1.5px solid var(--border-color);background:var(--bg-input);color:var(--text-main);font-size:13px;font-weight:600;text-align:center;">
+                    </div>
+                    <div id="borrowerDetailsCard" class="hidden" style="background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;">
+                            <span style="color:var(--text-label);font-weight:700;">Amount Given:</span>
+                            <strong id="borrowerGivenVal" style="color:var(--coral);">₹0.00</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:12px;">
+                            <span style="color:var(--text-label);font-weight:700;">Amount Received:</span>
+                            <strong id="borrowerReceivedVal" style="color:var(--secondary);">₹0.00</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px dashed var(--border-color);padding-top:6px;margin-top:2px;">
+                            <span style="color:var(--text-main);font-weight:700;">Net Balance:</span>
+                            <strong id="borrowerDiffVal" style="color:var(--purple);">₹0.00</strong>
+                        </div>
+                    </div>
+                    <div id="borrowerTxnContainer" class="hidden" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+                        <strong style="font-size:11px;color:var(--text-label);text-transform:uppercase;letter-spacing:0.5px;">Transactions</strong>
+                        <div id="borrowerTxnList" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ===== BALANCE MODAL ===== -->
+        <div id="balanceModal" class="modal hidden">
+            <div class="confirm-card" style="max-width:95%;width:340px;padding:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+                    <h3 style="margin:0;font-size:16px;color:var(--secondary);">💰 Accounts &amp; Credit</h3>
+                    <span style="cursor:pointer;font-size:18px;font-weight:700;" onclick="closeBalanceModal()">✕</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:14px;max-height:65vh;overflow-y:auto;padding-right:4px;">
+                    <div id="modalSavingsContainer">
+                        <strong style="font-size:11px;color:var(--text-label);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Savings</strong>
+                        <div id="modalSavingsList" style="display:flex;flex-direction:column;gap:6px;">Loading...</div>
+                    </div>
+                    <div id="modalCreditContainer" style="border-top:1px dashed var(--border-color);padding-top:10px;">
+                        <strong style="font-size:11px;color:var(--text-label);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Credit Cards</strong>
+                        <div id="modalCreditList" style="display:flex;flex-direction:column;gap:6px;">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     <!-- ===== RECURRING MODAL ===== -->
     <div id="recurringModal" class="modal hidden">
