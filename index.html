@@ -9559,6 +9559,7 @@ function toggleInvoiceManager() {
 
 
         // --- FETCH DEALERS ON LOAD ---
+        // --- FETCH DEALERS ON LOAD ---
         function fetchInvDealers() {
             fetch(`${INV_API_ENTRY}?key=${INV_API_KEY}`)
                 .then(r => r.json())
@@ -9570,25 +9571,52 @@ function toggleInvoiceManager() {
                     
                     const dropdown = document.getElementById("invManagerDealerDropdown");
                     const input = document.getElementById("invManagerDealerInput");
+                    
                     const renderDealers = (filter = "") => {
                         dropdown.innerHTML = "";
                         const filtered = invDealersList.filter(d => d.toLowerCase().includes(filter.toLowerCase()));
-                        if (filtered.length === 0) { dropdown.innerHTML = `<div class="custom-option empty-option">No dealers found</div>`; return; }
+                        
+                        // Show a helpful message instead of "No dealers found"
+                        if (filtered.length === 0) { 
+                            dropdown.innerHTML = `<div class="custom-option empty-option">✨ New dealer will be added</div>`; 
+                            return; 
+                        }
+                        
                         filtered.forEach(d => {
                             dropdown.appendChild(createInvCustomOption(d, d, (val) => {
                                 input.value = val; dropdown.classList.remove('show');
-                                onInvDealerChange(); // <-- Trigger block generation!
+                                onInvDealerChange(); // <-- Trigger block generation for existing!
                             }));
                         });
                     };
+
                     input.addEventListener('focus', () => { 
                         document.querySelectorAll('.custom-options-list').forEach(l => l.classList.remove('show'));
-                        dropdown.classList.add('show'); renderDealers(input.value); 
+                        dropdown.classList.add('show'); 
+                        renderDealers(input.value); 
                     });
+
+                    // --- UPDATED INPUT LISTENER ---
                     input.addEventListener('input', (e) => { 
-                        dropdown.classList.add('show'); renderDealers(e.target.value); 
-                        // If they clear the dealer, hide blocks
-                        if(!e.target.value) onInvDealerChange();
+                        dropdown.classList.add('show'); 
+                        renderDealers(e.target.value); 
+                        
+                        const dealerName = e.target.value.trim();
+                        const addBtn = document.getElementById("invAddRecipientBtn");
+                        const container = document.getElementById("invRecipientsContainer");
+
+                        if (dealerName.length > 0) {
+                            // Show the add button immediately so they can add items for the new dealer
+                            addBtn.classList.remove("hidden");
+                            
+                            // Auto-add the first item block if the container is currently empty
+                            if (container.children.length === 0) {
+                                invAddRecipientGroup();
+                            }
+                        } else {
+                            // If they clear the dealer input completely, reset and hide blocks
+                            onInvDealerChange();
+                        }
                     });
                 });
         }
