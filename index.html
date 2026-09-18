@@ -2206,7 +2206,8 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
                 <div class="nav-fab-container" id="navFab">
                     <button type="button" id="fabToggle" title="Navigation">🔗</button>
                     <div class="nav-options">
-                        <a href="#" class="nav-item" onclick="openBalanceModal(); return false;">💰 Balances</a>
+                       <a href="#" class="nav-item" onclick="openApiKeyModal(); return false;">🔑 API Keys</a>
+                      <a href="#" class="nav-item" onclick="openBalanceModal(); return false;">💰 Balances</a>
                         <a href="#" class="nav-item" onclick="openBorrowerModal(); return false;">🤝 Borrowers</a>
                         <a href="#" class="nav-item" onclick="openRecurringManager(); return false;">⏳ Recurring</a>
                         <a href="#" class="nav-item" onclick="openTemplateManager(); return false;">📋 Templates</a>
@@ -2865,6 +2866,26 @@ form.invoice-mode-active > *:not(.header-row-top):not(#invoiceManagerContainer):
           </div>
         </div>
     </div>
+<!-- ===== API KEYS MODAL ===== -->
+<div id="apiKeyModal" class="modal hidden">
+    <div class="confirm-card" style="max-width:380px; padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:14px;">
+            <h3 style="margin:0;font-size:16px;color:var(--primary);">🔑 Update API Keys</h3>
+            <span style="cursor:pointer;font-size:18px;font-weight:700;" onclick="closeApiKeyModal()">✕</span>
+        </div>
+        
+        <label style="margin-top:0;">Groq API Key</label>
+        <input type="password" id="groqKeyInput" placeholder="gsk_..." style="margin-bottom:12px;" autocomplete="off">
+        
+        <label style="margin-top:0;">Gemini API Key</label>
+        <input type="password" id="geminiKeyInput" placeholder="AIza..." style="margin-bottom:16px;" autocomplete="off">
+        
+        <div class="btn-group">
+            <button type="button" class="btn-confirm" onclick="saveApiKeys()">Save Keys</button>
+            <button type="button" class="btn-cancel" onclick="closeApiKeyModal()">Cancel</button>
+        </div>
+    </div>
+</div>
 
     <!-- ===== TOAST ===== -->
     <div id="toast" class="hidden"></div>
@@ -10027,6 +10048,43 @@ function toggleInvoiceManager() {
         }
     }, { passive: true });
 })();
+// ============================================================
+//  API KEYS MANAGER
+// ============================================================
+function openApiKeyModal() {
+    // Hide the FAB menu
+    document.getElementById('navFab').classList.remove('active');
+    
+    // Load existing keys from local storage
+    document.getElementById('groqKeyInput').value = localStorage.getItem('groq_api_key') || '';
+    document.getElementById('geminiKeyInput').value = localStorage.getItem('gemini_api_key') || '';
+    
+    // Show modal
+    document.getElementById('apiKeyModal').classList.remove('hidden');
+}
+
+function closeApiKeyModal() {
+    document.getElementById('apiKeyModal').classList.add('hidden');
+}
+
+function saveApiKeys() {
+    const groqKey = document.getElementById('groqKeyInput').value.trim();
+    const geminiKey = document.getElementById('geminiKeyInput').value.trim();
+    
+    if (groqKey) localStorage.setItem('groq_api_key', groqKey);
+    else localStorage.removeItem('groq_api_key');
+
+    if (geminiKey) localStorage.setItem('gemini_api_key', geminiKey);
+    else localStorage.removeItem('gemini_api_key');
+
+    closeApiKeyModal();
+    showToast("🔑 API Keys Saved!");
+}
+
+// Close modal when clicking outside the card
+document.getElementById('apiKeyModal').addEventListener('click', function(e) {
+    if (e.target === this) closeApiKeyModal();
+});
 
     </script>
 </body>
